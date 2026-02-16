@@ -55,7 +55,7 @@ const getUsedDays = (startDate: string, expiryDate: string): number => {
   return Math.max(0, differenceInDays(now, start));
 };
 
-// Calculate PT Package status based on expiry date (same logic as membership)
+// Calculate PT Package status - only based on expiry date, not start date
 const getPTPackageStatus = (
   startDate: string,
   expiryDate: string
@@ -76,13 +76,7 @@ const getPTPackageStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
-  
-  if (daysSinceStart < 30) {
-    return 'new_member';
-  }
-  
+  // PT packages should always show "active" if not expired, regardless of start date
   return 'active';
 };
 
@@ -90,6 +84,7 @@ const ptPackageStatusIconColors: Record<MembershipStatus, string> = {
   active: "text-emerald-600 dark:text-emerald-400",
   expired: "text-red-600 dark:text-red-400",
   new_member: "text-blue-600 dark:text-blue-400",
+  renew: "text-purple-600 dark:text-purple-400",
   expiring_soon: "text-amber-600 dark:text-amber-400",
   '7_days_left': "text-orange-600 dark:text-orange-400",
 };
@@ -115,6 +110,7 @@ const getPTPackageStatusLabel = (status: MembershipStatus): string => {
     active: "Active",
     expired: "Expired",
     new_member: "New Member",
+    renew: "Renew",
     expiring_soon: "Expiring Soon",
     '7_days_left': "7 Days Left",
   };
@@ -326,6 +322,7 @@ export const usePTPackageRecordsColumns = ({ onView, onEdit, onDelete, appointme
           const statusOrder: Record<MembershipStatus, number> = {
             active: 1,
             new_member: 2,
+            renew: 2,
             expiring_soon: 3,
             '7_days_left': 4,
             expired: 5,

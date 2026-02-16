@@ -76,7 +76,7 @@ export function useCreateAppointment() {
   });
 }
 
-// Update appointment mutation
+// Update appointment mutation with optimistic updates
 export function useUpdateAppointment() {
   const queryClient = useQueryClient();
 
@@ -103,21 +103,51 @@ export function useUpdateAppointment() {
 
       return response.json() as Promise<Appointment>;
     },
-    onSuccess: (_, variables) => {
-      // Invalidate all appointment queries to ensure all pages refresh
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.invalidateQueries({ queryKey: ["appointments", variables.id] });
-      // Also refetch immediately to ensure data is fresh
-      queryClient.refetchQueries({ queryKey: ["appointments"] });
+    // Optimistic update - update UI immediately before server responds
+    onMutate: async ({ id, data }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData<Appointment[]>(["appointments"]);
+
+      // Optimistically update the cache
+      if (previousAppointments) {
+        queryClient.setQueryData<Appointment[]>(
+          ["appointments"],
+          previousAppointments.map((apt) =>
+            apt._id === id ? { ...apt, ...data } : apt
+          )
+        );
+      }
+
+      // Return context with the snapshot
+      return { previousAppointments };
+    },
+    onSuccess: (updatedAppointment) => {
+      // Update the specific appointment in cache with server response
+      queryClient.setQueryData<Appointment[]>(["appointments"], (old) =>
+        old?.map((apt) =>
+          apt._id === updatedAppointment._id ? updatedAppointment : apt
+        )
+      );
       toast.success("Appointment updated successfully");
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _, context) => {
+      // Rollback to previous state on error
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["appointments"], context.previousAppointments);
+      }
       toast.error(error.message || "Failed to update appointment");
+    },
+    onSettled: () => {
+      // Refetch in background to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
     },
   });
 }
 
-// Delete appointment mutation
+// Delete appointment mutation with optimistic updates
 export function useDeleteAppointment() {
   const queryClient = useQueryClient();
 
@@ -134,12 +164,37 @@ export function useDeleteAppointment() {
 
       return { id };
     },
+    // Optimistic delete - remove from UI immediately
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["appointments"] });
+
+      const previousAppointments = queryClient.getQueryData<Appointment[]>(["appointments"]);
+
+      // Optimistically remove the appointment
+      if (previousAppointments) {
+        queryClient.setQueryData<Appointment[]>(
+          ["appointments"],
+          previousAppointments.filter((apt) => apt._id !== id)
+        );
+      }
+
+      return { previousAppointments };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      // Only invalidate related queries (not all of them)
+      queryClient.invalidateQueries({ queryKey: ["pt-packages"] });
       toast.success("Appointment deleted successfully");
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _, context) => {
+      // Rollback on error
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["appointments"], context.previousAppointments);
+      }
       toast.error(error.message || "Failed to delete appointment");
+    },
+    onSettled: () => {
+      // Ensure consistency with server
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
     },
   });
 }

@@ -27,10 +27,9 @@ export function useMembers({ initialMembers }: UseMembersProps = {}) {
 
   // Fetch members from API
   const { data: fetchedMembers = [], isLoading, error } = useQuery({
-    queryKey: ["members", filters.status], // Add status to query key if needed
+    queryKey: ["members"],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.status) params.append("status", filters.status);
       
       const response = await fetch(`/api/members?${params.toString()}`);
       if (!response.ok) {

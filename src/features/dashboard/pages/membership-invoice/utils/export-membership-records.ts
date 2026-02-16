@@ -78,6 +78,7 @@ const getStatusLabel = (record: MembershipRecord): string => {
     active: "Active",
     expired: "Expired",
     new_member: "New Member",
+    renew: "Renew",
     expiring_soon: "Expiring Soon",
     '7_days_left': "7 Days Left",
   };
@@ -206,15 +207,12 @@ export const exportToPDF = (records: MembershipRecord[], filters?: MembershipRec
     `;
   }).join("");
 
-  // Add summary row
+  // Add summary row (13 columns total - 8 empty + amount + 4 empty)
   const summaryRow = `
     <tr class="summary-row">
       <td colspan="8"></td>
       <td>$${totalRevenue.toFixed(2)}</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
+      <td colspan="4"></td>
     </tr>
   `;
 

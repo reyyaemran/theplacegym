@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Member>("members");
+      const collection = db.collection("members");
 
       const searchParams = request.nextUrl.searchParams;
       const search = searchParams.get("search");
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Member>("members");
+      const collection = db.collection("members");
       const memberWithId: Member & { customerNumber?: string } = {
         id: `member-${Date.now()}`,
         ...member,

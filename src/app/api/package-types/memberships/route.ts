@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Membership>("membership-types");
+      const collection = db.collection("membership-types");
 
       const searchParams = request.nextUrl.searchParams;
       const search = searchParams.get("search");
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         query.status = status;
       }
 
-      memberships = await collection.find(query as any).sort({ duration: 1 }).toArray();
+      memberships = await collection.find(query as any).sort({ duration: 1 }).toArray() as unknown as Membership[];
 
       // Apply search filter if provided
       if (search) {
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Membership>("membership-types");
+      const collection = db.collection("membership-types");
       const membershipWithId: Membership = {
         id: `m${Date.now()}`,
         ...membership,

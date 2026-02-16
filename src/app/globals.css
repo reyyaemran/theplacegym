@@ -101,38 +101,38 @@
 }
 
 .dark {
-  /* Muted nude color scheme - refined dark mode */
-  --background: oklch(0.12 0.003 240);
-  --foreground: oklch(0.95 0.001 0);
-  --card: oklch(0.15 0.004 240);
-  --card-foreground: oklch(0.95 0.001 0);
-  --popover: oklch(0.15 0.004 240);
-  --popover-foreground: oklch(0.95 0.001 0);
-  --primary: oklch(0.65 0.08 55);
-  --primary-foreground: oklch(0.12 0.003 240);
-  --secondary: oklch(0.19 0.005 240);
-  --secondary-foreground: oklch(0.95 0.001 0);
-  --muted: oklch(0.19 0.005 240);
-  --muted-foreground: oklch(0.55 0.008 240);
-  --accent: oklch(0.22 0.006 240);
-  --accent-foreground: oklch(0.95 0.001 0);
-  --destructive: oklch(0.60 0.12 25);
-  --border: oklch(0.22 0.006 240);
-  --input: oklch(0.17 0.005 240);
-  --ring: oklch(0.65 0.08 55);
+  /* ChatGPT / OpenAI-inspired dark mode — refined for field & tab visibility */
+  --background: oklch(0.21 0 0);          /* #212121 — main content area */
+  --foreground: oklch(0.93 0 0);          /* #ececec — primary text */
+  --card: oklch(0.25 0 0);               /* #2b2b2b — elevated cards, slight lift from bg */
+  --card-foreground: oklch(0.93 0 0);     /* #ececec */
+  --popover: oklch(0.25 0 0);            /* #2b2b2b — popover surfaces */
+  --popover-foreground: oklch(0.93 0 0);  /* #ececec */
+  --primary: oklch(0.65 0.08 55);         /* brand accent — unchanged */
+  --primary-foreground: oklch(0.98 0 0);  /* near white */
+  --secondary: oklch(0.30 0 0);           /* #383838 — secondary surfaces, badges */
+  --secondary-foreground: oklch(0.93 0 0);/* #ececec */
+  --muted: oklch(0.30 0 0);              /* #383838 — tab list bg, clearly above card */
+  --muted-foreground: oklch(0.72 0 0);    /* #b8b8b8 — muted text, readable */
+  --accent: oklch(0.33 0 0);             /* #404040 — hover states, clearly visible */
+  --accent-foreground: oklch(0.93 0 0);   /* #ececec */
+  --destructive: oklch(0.60 0.12 25);     /* red — unchanged */
+  --border: oklch(0.40 0 0);             /* #505050 — strong visible borders on fields */
+  --input: oklch(0.40 0 0);              /* #505050 — at /50 opacity → ~#393939, visible */
+  --ring: oklch(0.65 0.08 55);            /* brand accent — unchanged */
   --chart-1: oklch(0.65 0.08 55);
   --chart-2: oklch(0.63 0.06 200);
   --chart-3: oklch(0.61 0.06 280);
   --chart-4: oklch(0.67 0.08 84);
   --chart-5: oklch(0.65 0.07 70);
-  --sidebar: oklch(0.13 0.003 240);
-  --sidebar-foreground: oklch(0.95 0.001 0);
-  --sidebar-primary: oklch(0.65 0.08 55);
-  --sidebar-primary-foreground: oklch(0.12 0.003 240);
-  --sidebar-accent: oklch(0.19 0.005 240);
-  --sidebar-accent-foreground: oklch(0.95 0.001 0);
-  --sidebar-border: oklch(0.22 0.006 240);
-  --sidebar-ring: oklch(0.65 0.08 55);
+  --sidebar: oklch(0.16 0 0);            /* #171717 — darker sidebar */
+  --sidebar-foreground: oklch(0.93 0 0);  /* #ececec */
+  --sidebar-primary: oklch(0.65 0.08 55); /* brand accent — unchanged */
+  --sidebar-primary-foreground: oklch(0.16 0 0); /* matches sidebar bg */
+  --sidebar-accent: oklch(0.26 0 0);      /* #303030 — sidebar hover, visible */
+  --sidebar-accent-foreground: oklch(0.93 0 0); /* #ececec */
+  --sidebar-border: oklch(0.33 0 0);      /* #404040 — sidebar borders, visible */
+  --sidebar-ring: oklch(0.65 0.08 55);    /* brand accent — unchanged */
 }
 
 @layer base {

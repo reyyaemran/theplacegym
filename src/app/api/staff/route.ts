@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
       
       const searchParams = request.nextUrl.searchParams;
       const department = searchParams.get("department");
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       if (level) query.level = level;
       if (status) query.status = status;
       
-      staff = await collection.find(query as any).sort({ name: 1 }).toArray();
+      staff = await collection.find(query as any).sort({ name: 1 }).toArray() as unknown as Staff[];
     } catch (error: unknown) {
       // If MongoDB is not configured, use mock data
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       
       try {
         const db = await getDatabase();
-        const collection = db.collection<Staff>("staff");
+        const collection = db.collection("staff");
         
         while (!isUnique && attempts < 10) {
           const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     if (validatedData.staffID) {
       try {
         const db = await getDatabase();
-        const collection = db.collection<Staff>("staff");
+        const collection = db.collection("staff");
         const existing = await collection.findOne({ staffID } as any);
         if (existing) {
           return NextResponse.json(
@@ -195,14 +195,14 @@ export async function POST(request: NextRequest) {
     // Try MongoDB first, otherwise just return the data (mock mode)
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
       const staffWithTimestamps: Omit<Staff, "_id"> = {
         ...staff,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       const result = await collection.insertOne(
-        staffWithTimestamps as Staff & { _id?: unknown }
+        staffWithTimestamps as any
       );
       const createdStaff: Staff = {
         _id: result.insertedId.toString(),

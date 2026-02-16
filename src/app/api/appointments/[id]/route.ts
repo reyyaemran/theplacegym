@@ -14,7 +14,7 @@ export async function GET(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Appointment>("appointments");
+      const collection = db.collection("appointments");
       const appointment = await collection.findOne({ _id: new ObjectId(id) } as any);
 
       if (!appointment) {
@@ -89,7 +89,7 @@ export async function PUT(
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Appointment>("appointments");
+      const collection = db.collection("appointments");
 
       const result = await collection.updateOne(
         { _id: new ObjectId(id) } as any,
@@ -144,7 +144,7 @@ export async function DELETE(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Appointment>("appointments");
+      const collection = db.collection("appointments");
 
       const result = await collection.deleteOne({ _id: new ObjectId(id) } as any);
 

@@ -17,12 +17,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useStaff, useUpdateStaff } from "@/hooks/use-staff";
-import { useRoster, useUpdateRoster } from "@/hooks/use-roster";
-import { Calendar, CalendarDays, TrendingUp, Users, Target, Circle, Award, Sun, Moon, Clock, Ban, Plane, Search, Flag, Thermometer, Wallet } from "lucide-react";
+import { useRoster, useUpdateRoster, useStaffYearRoster } from "@/hooks/use-roster";
+import { Calendar, CalendarDays, TrendingUp, Users, Target, Circle, Award, Sun, Moon, Clock, Ban, Plane, Search, Flag, Thermometer, Wallet, X, Briefcase } from "lucide-react";
 import { Staff, StaffDepartment } from "@/types/staff";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { RosterRecord } from "@/types/roster";
 
 type ShiftType = "AM" | "MID" | "PM";
 type LeaveType = "AL" | "PH" | "SL" | "UP";
@@ -97,6 +98,7 @@ export function RosterPage() {
   const [rosterData, setRosterData] = useState<RosterData>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
 
   const isLoading = isStaffLoading || isRosterLoading;
 
@@ -530,56 +532,63 @@ export function RosterPage() {
         <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">ROSTER</h1>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-foreground/90">
-              Total Working Days
-            </CardTitle>
-            <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/20">
-              <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
-              {overallStats.totalWorkingDays}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards — Overall or Selected Staff Detail */}
+      {selectedStaff ? (
+        <SelectedStaffStats
+          staff={selectedStaff}
+          onClose={() => setSelectedStaff(null)}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-foreground/90">
+                Total Working Days
+              </CardTitle>
+              <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/20">
+                <CalendarDays className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                {overallStats.totalWorkingDays}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-foreground/90">
-              Leave Usage
-            </CardTitle>
-            <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950/20">
-              <Calendar className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
-              {overallStats.totalLeaveUsage}
-            </div>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-foreground/90">
+                Leave Usage
+              </CardTitle>
+              <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950/20">
+                <Calendar className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                {overallStats.totalLeaveUsage}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-foreground/90">
-              Leave Balance
-            </CardTitle>
-            <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/20">
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
-              {overallStats.totalLeaveBalance}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-foreground/90">
+                Leave Balance
+              </CardTitle>
+              <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/20">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                {overallStats.totalLeaveBalance}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Roster Table */}
       <div className="rounded-lg border bg-card w-full flex flex-col h-[calc(100vh-380px)] overflow-hidden">
@@ -674,17 +683,23 @@ export function RosterPage() {
                   const staffRoster = rosterData[staff._id || ""] || {};
 
                   return (
-                    <TableRow key={staff._id} className="h-12">
+                    <TableRow key={staff._id} className={cn("h-12", selectedStaff?._id === staff._id && "bg-primary/5")}>
                       <TableCell className="sticky left-0 z-10 bg-background w-[180px] min-w-[180px] shadow-[1px_0_0_0_hsl(var(--border))] p-2">
-                        <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          className="flex items-center gap-2.5 w-full text-left cursor-pointer"
+                          onClick={() => {
+                            setSelectedStaff(selectedStaff?._id === staff._id ? null : staff);
+                          }}
+                        >
                           <Avatar className="h-8 w-8 shrink-0 border-2 border-background shadow-sm">
                             <AvatarImage src={staff.avatar} alt={staff.name} />
                             <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                               {getInitials(staff.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-sm truncate block" title={staff.name}>{staff.name}</span>
-                        </div>
+                          <span className="font-medium text-sm truncate block transition-colors" title={staff.name}>{staff.name}</span>
+                        </button>
                       </TableCell>
                       <TableCell className="sticky left-[180px] z-10 bg-background w-[100px] min-w-[100px] shadow-[1px_0_0_0_hsl(var(--border))] p-2 text-center">
                         <Badge variant="outline" className="gap-1 border-muted bg-muted/50 text-[10px] font-normal shrink-0 inline-flex">
@@ -833,6 +848,334 @@ export function RosterPage() {
           </div>
         </div>
       </div>
+
+    </div>
+  );
+}
+
+// --- Helper for leave stats calculation ---
+interface LeaveStats {
+  al: number;
+  ph: number;
+  sl: number;
+  up: number;
+  total: number;
+}
+
+function calcLeaveStats(records: RosterRecord[]): LeaveStats {
+  const stats: LeaveStats = { al: 0, ph: 0, sl: 0, up: 0, total: 0 };
+  records.forEach((r) => {
+    if (r.status === "leave") {
+      stats.total++;
+      switch (r.leaveType) {
+        case "AL": stats.al++; break;
+        case "PH": stats.ph++; break;
+        case "SL": stats.sl++; break;
+        case "UP": stats.up++; break;
+      }
+    }
+  });
+  return stats;
+}
+
+// --- Selected Staff Stats inline component ---
+function SelectedStaffStats({ staff, onClose }: { staff: Staff; onClose: () => void }) {
+  const currentYear = new Date().getFullYear();
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const currentMonth = today.getMonth() + 1;
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}-`;
+
+  const { data: ytdRecords = [], isLoading } = useStaffYearRoster(
+    staff._id,
+    currentYear,
+    todayStr
+  );
+
+  const stats = useMemo(() => {
+    // Build a lookup from DB records: date string -> record
+    const recordMap = new Map<string, RosterRecord>();
+    ytdRecords.forEach((r) => recordMap.set(r.date, r));
+
+    // Staff defaults
+    const defaultShift: ShiftType =
+      staff.shift === "AM" ? "AM" :
+      staff.shift === "MID" ? "MID" :
+      staff.shift === "NOON" ? "PM" : "AM";
+    const dayOffName = staff.dayOff?.toLowerCase();
+    const hasShift = !!staff.shift;
+
+    // Iterate every calendar day from Jan 1 to today, applying defaults where no DB record
+    let workingDays = 0;
+    let dayOffs = 0;
+    let monthWorkingDays = 0;
+    let monthDayOffs = 0;
+    const yearLeave: LeaveStats = { al: 0, ph: 0, sl: 0, up: 0, total: 0 };
+    const monthLeave: LeaveStats = { al: 0, ph: 0, sl: 0, up: 0, total: 0 };
+
+    const startDate = new Date(currentYear, 0, 1);
+    const endDate = new Date(today);
+
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const isThisMonth = dateStr.startsWith(currentMonthPrefix);
+
+      const record = recordMap.get(dateStr);
+      let status: RosterDayStatus = "none";
+      let leaveType: LeaveType | undefined;
+
+      if (record) {
+        status = record.status as RosterDayStatus;
+        leaveType = record.leaveType as LeaveType | undefined;
+      } else {
+        // Apply default logic (same as the roster table useEffect)
+        const dayName = d.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+        if (dayOffName && dayName === dayOffName) {
+          status = "dayoff";
+        } else if (hasShift) {
+          status = "shift";
+        }
+      }
+
+      // Count
+      if (status === "shift") {
+        workingDays++;
+        if (isThisMonth) monthWorkingDays++;
+      } else if (status === "dayoff") {
+        dayOffs++;
+        if (isThisMonth) monthDayOffs++;
+      } else if (status === "leave" && leaveType) {
+        yearLeave.total++;
+        if (isThisMonth) monthLeave.total++;
+        switch (leaveType) {
+          case "AL":
+            yearLeave.al++;
+            if (isThisMonth) monthLeave.al++;
+            break;
+          case "PH":
+            yearLeave.ph++;
+            if (isThisMonth) monthLeave.ph++;
+            break;
+          case "SL":
+            yearLeave.sl++;
+            if (isThisMonth) monthLeave.sl++;
+            break;
+          case "UP":
+            yearLeave.up++;
+            if (isThisMonth) monthLeave.up++;
+            break;
+        }
+      }
+    }
+
+    const alBalance = Math.max(0, (staff.annualLeaveBalance ?? 18) - yearLeave.al);
+    const phBalance = Math.max(0, (staff.publicHolidayBalance ?? 11) - yearLeave.ph);
+    const slBalance = Math.max(0, (staff.sickLeaveBalance ?? 30) - yearLeave.sl);
+
+    return { workingDays, dayOffs, yearLeave, monthWorkingDays, monthDayOffs, monthLeave, alBalance, phBalance, slBalance };
+  }, [ytdRecords, currentMonthPrefix, staff, currentYear, today]);
+
+  const startOfYear = new Date(currentYear, 0, 1);
+  const calendarDays = Math.floor((today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const monthName = today.toLocaleString("default", { month: "long" });
+
+  return (
+    <Card className="relative overflow-hidden">
+      {/* Header */}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
+            <AvatarImage src={staff.avatar} alt={staff.name} />
+            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              {getInitials(staff.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle className="text-sm font-bold">{staff.name}</CardTitle>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Badge variant="outline" className="text-[10px] font-normal gap-1">
+                {getDepartmentIcon(staff.department)}
+                {staff.department}
+              </Badge>
+              {staff.level && (
+                <Badge variant="secondary" className="text-[10px] font-normal">{staff.level}</Badge>
+              )}
+              <span className="text-[10px] text-muted-foreground">
+                Jan 1 – {today.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, {currentYear}
+              </span>
+            </div>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Close staff details">
+          <X className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-4">
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground text-center py-4">Calculating...</div>
+        ) : (
+          <>
+            {/* Row 1: Summary numbers */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <MiniStat
+                icon={<Briefcase className="h-3.5 w-3.5 text-blue-500" />}
+                label="Working Days (YTD)"
+                value={stats.workingDays}
+                sub={`of ${calendarDays} calendar days`}
+              />
+              <MiniStat
+                icon={<Ban className="h-3.5 w-3.5 text-destructive" />}
+                label="Day Offs (YTD)"
+                value={stats.dayOffs}
+              />
+              <MiniStat
+                icon={<Clock className="h-3.5 w-3.5 text-indigo-500" />}
+                label={`Working (${monthName})`}
+                value={stats.monthWorkingDays}
+                sub={`${stats.monthDayOffs} day offs`}
+              />
+              <MiniStat
+                icon={<Calendar className="h-3.5 w-3.5 text-amber-500" />}
+                label={`Leave (${monthName})`}
+                value={stats.monthLeave.total}
+                badges={stats.monthLeave.total > 0 ? [
+                  ...(stats.monthLeave.al > 0 ? [`AL:${stats.monthLeave.al}`] : []),
+                  ...(stats.monthLeave.ph > 0 ? [`PH:${stats.monthLeave.ph}`] : []),
+                  ...(stats.monthLeave.sl > 0 ? [`SL:${stats.monthLeave.sl}`] : []),
+                  ...(stats.monthLeave.up > 0 ? [`UP:${stats.monthLeave.up}`] : []),
+                ] : undefined}
+              />
+            </div>
+
+            {/* Row 2: Leave Balance per type */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <LeaveBalanceItem
+                icon={<Plane className="h-3.5 w-3.5" />}
+                label="Annual Leave"
+                used={stats.yearLeave.al}
+                total={staff.annualLeaveBalance ?? 18}
+                balance={stats.alBalance}
+                color="blue"
+              />
+              <LeaveBalanceItem
+                icon={<Flag className="h-3.5 w-3.5" />}
+                label="Public Holiday"
+                used={stats.yearLeave.ph}
+                total={staff.publicHolidayBalance ?? 11}
+                balance={stats.phBalance}
+                color="purple"
+              />
+              <LeaveBalanceItem
+                icon={<Thermometer className="h-3.5 w-3.5" />}
+                label="Sick Leave"
+                used={stats.yearLeave.sl}
+                total={staff.sickLeaveBalance ?? 30}
+                balance={stats.slBalance}
+                color="emerald"
+              />
+              <LeaveBalanceItem
+                icon={<Wallet className="h-3.5 w-3.5" />}
+                label="Unpaid Leave"
+                used={stats.yearLeave.up}
+                total={null}
+                balance={null}
+                color="orange"
+              />
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Mini stat card ---
+function MiniStat({ icon, label, value, sub, badges }: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  sub?: string;
+  badges?: string[];
+}) {
+  return (
+    <div className="rounded-lg border bg-background p-3 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+        {icon}
+        <span className="truncate">{label}</span>
+      </div>
+      <div className="text-xl font-bold font-mono tracking-tight">{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+      {badges && badges.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-0.5">
+          {badges.map((b) => (
+            <span key={b} className="text-[9px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Leave balance item ---
+function LeaveBalanceItem({ icon, label, used, total, balance, color }: {
+  icon: React.ReactNode;
+  label: string;
+  used: number;
+  total: number | null;
+  balance: number | null;
+  color: "blue" | "purple" | "emerald" | "orange";
+}) {
+  const percentage = total !== null && total > 0 ? Math.min(100, (used / total) * 100) : 0;
+
+  const colorMap = {
+    blue: { text: "text-blue-500", bar: "bg-blue-500" },
+    purple: { text: "text-purple-500", bar: "bg-purple-500" },
+    emerald: { text: "text-emerald-500", bar: "bg-emerald-500" },
+    orange: { text: "text-orange-500", bar: "bg-orange-500" },
+  };
+
+  const c = colorMap[color];
+
+  return (
+    <div className="rounded-lg border bg-background p-3 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className={c.text}>{icon}</span>
+        <span className="text-[11px] font-medium truncate">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        {balance !== null ? (
+          <>
+            <span className={`text-xl font-bold font-mono ${c.text}`}>{balance}</span>
+            <span className="text-[10px] text-muted-foreground">remaining</span>
+          </>
+        ) : (
+          <>
+            <span className={`text-xl font-bold font-mono ${c.text}`}>{used}</span>
+            <span className="text-[10px] text-muted-foreground">days used</span>
+          </>
+        )}
+      </div>
+      {total !== null && (
+        <>
+          <div className="w-full bg-muted rounded-full h-1.5">
+            <div
+              className={`h-1.5 rounded-full transition-all ${
+                percentage >= 90 ? "bg-destructive" : percentage >= 70 ? "bg-amber-500" : c.bar
+              }`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {used} used / {total} total
+          </div>
+        </>
+      )}
     </div>
   );
 }

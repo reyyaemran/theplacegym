@@ -7,6 +7,7 @@ import { useMembers } from "@/features/dashboard/pages/members/hooks/use-members
 import { useStaff } from "@/hooks/use-staff";
 import { useAppointments, useCreateAppointment, useUpdateAppointment, useDeleteAppointment } from "@/hooks/use-appointments";
 import { usePTPackageRecords } from "@/hooks/use-pt-package-records";
+import { useRoster } from "@/hooks/use-roster";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreateRequest } from "@/hooks/use-requests";
 import { PTPackageRecord } from "@/features/dashboard/pages/ptpackage-invoice/types/pt-package-record";
@@ -24,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format, startOfWeek, addDays, isSameDay, isToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, parseISO, isPast } from "date-fns";
@@ -296,7 +298,7 @@ const sortAppointmentsByStatusAndTime = (appointments: any[]) => {
 
 export default function AppointmentCalendarPage() {
   // Get current logged-in staff
-  const { staff: currentStaff } = useAuth();
+  const { staff: currentStaff, isSuperAdmin } = useAuth();
   
   // Check if current user is PT or PTS
   const isPTorPTS = currentStaff?.department === "PT" || currentStaff?.department === "PTS";
@@ -310,6 +312,10 @@ export default function AppointmentCalendarPage() {
   const { data: staffData = [] } = useStaff();
   const { data: appointmentsData = [], refetch: refetchAppointments } = useAppointments();
   const { data: ptPackageRecords = [] } = usePTPackageRecords();
+  
+  // Get today's roster
+  const today = new Date();
+  const { data: rosterData = [] } = useRoster(today.getMonth() + 1, today.getFullYear());
   
   // Mutation hooks for API operations
   const createAppointmentMutation = useCreateAppointment();
@@ -331,6 +337,23 @@ export default function AppointmentCalendarPage() {
         specialties: []
       }));
   }, [staffData]);
+  
+  // Get all PT/PTS trainers to display in the trainers card
+  const trainersWorkingToday = useMemo(() => {
+    // Simply return all PT/PTS trainers from the trainers list
+    // The trainers list is already filtered for PT/PTS departments
+    return trainers.map((trainer) => {
+      const staffMember = staffData.find((s: Staff) => s._id === trainer.id);
+      return {
+        id: trainer.id,
+        name: trainer.name,
+        avatar: trainer.avatar || staffMember?.avatar || "",
+        department: staffMember?.department || "PT",
+        email: staffMember?.email || "",
+        status: trainer.originalStatus || trainer.status
+      };
+    });
+  }, [trainers, staffData]);
 
   // Helper function to get status message
   const getStatusMessage = (status: string): string => {
@@ -467,6 +490,7 @@ export default function AppointmentCalendarPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
   const [isEditRequestDialogOpen, setIsEditRequestDialogOpen] = useState(false);
+  const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] = useState(false);
   const [editRequest, setEditRequest] = useState({
     requestType: "CHANGE_DATE" as "CHANGE_DATE" | "UNDO_SESSION" | "CHANGE_PACKAGE" | "EXTEND_PACKAGE" | "CUT_SESSIONS" | "OTHER",
     reason: "",
@@ -832,11 +856,6 @@ export default function AppointmentCalendarPage() {
       sessions = days.flatMap(day => getSessionsForDate(day));
     }
 
-    // Filter out cancelled appointments - only show upcoming/active appointments
-    sessions = sessions.filter((session: any) => 
-      session.status !== 'cancelled' && session.originalStatus !== "CANCELLED" && session.originalStatus !== "NO_SHOW"
-    );
-
     // Apply filters
     if (searchTerm) {
       sessions = sessions.filter((session: any) =>
@@ -851,7 +870,9 @@ export default function AppointmentCalendarPage() {
     }
 
     if (trainerFilter !== "all") {
-      sessions = sessions.filter((session: any) => session.trainer === trainerFilter);
+      sessions = sessions.filter((session: any) => 
+        session.trainer?.toLowerCase().trim() === trainerFilter.toLowerCase().trim()
+      );
     }
 
     return sessions;
@@ -952,17 +973,23 @@ export default function AppointmentCalendarPage() {
     setIsAppointmentDialogOpen(true);
   };
 
-  const handleDeleteAppointment = async () => {
+  const handleDeleteAppointment = () => {
+    if (!selectedAppointment) return;
+    setIsDeleteConfirmDialogOpen(true);
+  };
+
+  const confirmDeleteAppointment = async () => {
     if (!selectedAppointment) return;
     
     try {
       // Delete appointment via API
       await deleteAppointmentMutation.mutateAsync(selectedAppointment.id);
       setIsAppointmentDialogOpen(false);
+      setIsDeleteConfirmDialogOpen(false);
       setSelectedAppointment(null);
     } catch (error: any) {
       // Error is already handled by the mutation hook
-      // Error is already handled by the mutation hook
+      setIsDeleteConfirmDialogOpen(false);
     }
   };
 
@@ -1108,7 +1135,9 @@ export default function AppointmentCalendarPage() {
     }
 
     if (trainerFilter !== "all") {
-      sessions = sessions.filter((session: any) => session.trainer === trainerFilter);
+      sessions = sessions.filter((session: any) => 
+        session.trainer?.toLowerCase().trim() === trainerFilter.toLowerCase().trim()
+      );
     }
 
     return sessions;
@@ -1181,6 +1210,49 @@ export default function AppointmentCalendarPage() {
   }, [appointments, isPTorPTS, currentTrainerId]);
 
   const uniqueTrainers = Array.from(new Set(currentDaySessions.map((s: any) => s.trainer)));
+  
+  // Get selected trainer stats based on actual data
+  const selectedTrainerStats = useMemo(() => {
+    if (trainerFilter === "all") return null;
+    
+    // Find the trainer in trainersWorkingToday or trainers
+    const trainerData = trainersWorkingToday.find(t => t.name === trainerFilter) ||
+                        trainers.find(t => t.name === trainerFilter);
+    
+    if (!trainerData) return null;
+    
+    // Calculate total sessions for this trainer (from appointments)
+    // Use case-insensitive comparison for trainer name matching
+    const trainerFilterLower = trainerFilter.toLowerCase().trim();
+    const trainerAppointments = appointments.filter(
+      (apt: Appointment) => apt.staffName?.toLowerCase().trim() === trainerFilterLower ||
+                           apt.staffId === trainerData?.id
+    );
+    
+    const totalSessions = trainerAppointments.length;
+    const completedSessions = trainerAppointments.filter(
+      (apt: Appointment) => apt.status === "COMPLETED"
+    ).length;
+    
+    // Count unique clients
+    const uniqueClients = new Set(
+      trainerAppointments.map((apt: Appointment) => apt.clientName || apt.clientId)
+    ).size;
+    
+    // Today's sessions
+    const todaysSessions = trainerAppointments.filter((apt: Appointment) => {
+      const aptDate = new Date(apt.date);
+      return isSameDay(aptDate, new Date());
+    }).length;
+    
+    return {
+      ...trainerData,
+      totalSessions,
+      completedSessions,
+      uniqueClients,
+      todaysSessions
+    };
+  }, [trainerFilter, trainersWorkingToday, trainers, appointments]);
   
   // Show loading state
   if (loadingAppointments || loadingMembers || loadingTrainers) {
@@ -1716,18 +1788,18 @@ export default function AppointmentCalendarPage() {
                   <div className="flex items-center justify-between w-full">
                     <CardTitle className="text-sm font-semibold text-foreground/90">Trainers</CardTitle>
                     <div className="flex -space-x-2">
-                      {uniqueTrainers.slice(0, 3).map((trainer: any) => (
-                        <Avatar key={trainer} className="w-8 h-8 border-2 border-background shadow-sm">
-                          <AvatarImage src="" />
+                      {trainersWorkingToday.slice(0, 3).map((trainer: any) => (
+                        <Avatar key={trainer.id} className="w-8 h-8 border-2 border-background shadow-sm">
+                          <AvatarImage src={trainer.avatar || ""} />
                           <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                            {trainer.split(' ').map((n: any) => n[0]).join('').toUpperCase()}
+                            {getInitials(trainer.name)}
                           </AvatarFallback>
                         </Avatar>
                       ))}
-                      {uniqueTrainers.length > 3 && (
+                      {trainersWorkingToday.length > 3 && (
                         <Avatar className="w-8 h-8 border-2 border-background shadow-sm">
                           <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/60 text-muted-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                            +{uniqueTrainers.length - 3}
+                            +{trainersWorkingToday.length - 3}
                           </AvatarFallback>
                         </Avatar>
                       )}
@@ -1736,21 +1808,16 @@ export default function AppointmentCalendarPage() {
                 ) : (
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10 shadow-sm">
-                      <AvatarImage src="" />
+                      <AvatarImage src={selectedTrainerStats?.avatar || ""} />
                       <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                        {trainerFilter.split(' ').map((n: any) => n[0]).join('').toUpperCase()}
+                        {getInitials(trainerFilter)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-sm font-semibold text-foreground/90 truncate">{trainerFilter}</CardTitle>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star key={star} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          ))}
-                        </div>
-                        <span className="text-xs font-medium text-muted-foreground font-mono">4.8</span>
-                      </div>
+                      <Badge variant="outline" className="text-[10px] px-2 py-0 mt-1">
+                        {(selectedTrainerStats as { department?: string })?.department || "PT"}
+                      </Badge>
                     </div>
                   </div>
                 )}
@@ -1765,10 +1832,10 @@ export default function AppointmentCalendarPage() {
                       <Users className="mr-2 h-4 w-4" />
                       All Trainers
                     </DropdownMenuItem>
-                    {uniqueTrainers.map((trainer: any) => (
-                      <DropdownMenuItem key={trainer} onClick={() => handleTrainerFilter(trainer)}>
+                    {trainersWorkingToday.map((trainer: any) => (
+                      <DropdownMenuItem key={trainer.id} onClick={() => handleTrainerFilter(trainer.name)}>
                         <User className="mr-2 h-4 w-4" />
-                        {trainer.split(' ')[0]}
+                        {trainer.name}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -1778,11 +1845,12 @@ export default function AppointmentCalendarPage() {
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
                 {trainerFilter === "all" ? (
-                  <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{uniqueTrainers.length}</div>
+                  <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{trainersWorkingToday.length}</div>
                 ) : (
                   <div className="flex items-center justify-center gap-6 text-xs font-medium text-muted-foreground">
-                    <span className="font-mono font-bold">Total Sessions: 12</span>
-                    <span className="font-mono font-bold">Total Clients: 8</span>
+                    <span className="font-mono font-bold">Today: {selectedTrainerStats?.todaysSessions || 0}</span>
+                    <span className="font-mono font-bold">Total: {selectedTrainerStats?.totalSessions || 0}</span>
+                    <span className="font-mono font-bold">Clients: {selectedTrainerStats?.uniqueClients || 0}</span>
                   </div>
                 )}
               </div>
@@ -1955,11 +2023,6 @@ export default function AppointmentCalendarPage() {
                   // Get sessions for this specific day
                   let daySessions = getSessionsForDate(day);
                   
-                  // Filter out cancelled appointments - only show upcoming/active appointments
-                  daySessions = daySessions.filter((session: any) => 
-                    session.status !== 'cancelled' && session.originalStatus !== "CANCELLED" && session.originalStatus !== "NO_SHOW"
-                  );
-                  
                   // Apply filters to weekly view
                   if (searchTerm) {
                     daySessions = daySessions.filter((session: any) =>
@@ -1974,7 +2037,9 @@ export default function AppointmentCalendarPage() {
                   }
                   
                   if (trainerFilter !== "all") {
-                    daySessions = daySessions.filter((session: any) => session.trainer === trainerFilter);
+                    daySessions = daySessions.filter((session: any) => 
+                      session.trainer?.toLowerCase().trim() === trainerFilter.toLowerCase().trim()
+                    );
                   }
                   
                   return (
@@ -2086,11 +2151,6 @@ export default function AppointmentCalendarPage() {
                   // Get sessions for this specific day
                   let daySessions = getSessionsForDate(day);
                   
-                  // Filter out cancelled appointments - only show upcoming/active appointments
-                  daySessions = daySessions.filter((session: any) => 
-                    session.status !== 'cancelled' && session.originalStatus !== "CANCELLED" && session.originalStatus !== "NO_SHOW"
-                  );
-                  
                   // Apply filters to monthly view
                   if (searchTerm) {
                     daySessions = daySessions.filter((session: any) =>
@@ -2105,7 +2165,9 @@ export default function AppointmentCalendarPage() {
                   }
                   
                   if (trainerFilter !== "all") {
-                    daySessions = daySessions.filter((session: any) => session.trainer === trainerFilter);
+                    daySessions = daySessions.filter((session: any) => 
+                      session.trainer?.toLowerCase().trim() === trainerFilter.toLowerCase().trim()
+                    );
                   }
                   const hasSessions = daySessions.length > 0;
                   const totalBooked = daySessions.reduce((sum: any, s: any) => sum + (s.packageSessions?.used || 0), 0);
@@ -2314,31 +2376,84 @@ export default function AppointmentCalendarPage() {
                   </Button>
                 )}
                 {selectedAppointment.status === 'completed' || selectedAppointment.status === 'COMPLETED' ? (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsEditRequestDialogOpen(true);
-                    }}
-                    className="flex-1 h-10 font-medium"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
+                  <div className="flex gap-2 flex-1">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsEditRequestDialogOpen(true);
+                      }}
+                      className="flex-1 h-10 font-medium"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    {isSuperAdmin && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleDeleteAppointment}
+                        className="h-10 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 font-medium"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 ) : selectedAppointment.status !== 'cancelled' && selectedAppointment.status !== 'CANCELLED' && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCancelAppointment}
-                    className="flex-1 h-10 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 font-medium"
-                  >
-                    <CancelIcon className="mr-2 h-4 w-4" />
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2 flex-1">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleCancelAppointment}
+                      className="flex-1 h-10 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 font-medium"
+                    >
+                      <CancelIcon className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                    {isSuperAdmin && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleDeleteAppointment}
+                        className="h-10 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 font-medium"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteConfirmDialogOpen} onOpenChange={setIsDeleteConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this appointment? This action cannot be undone and will:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>Remove the appointment from all views</li>
+                <li>Recalculate the PT package session balance if applicable</li>
+                <li>Update all related statistics and displays</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAppointmentMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteAppointment}
+              disabled={deleteAppointmentMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteAppointmentMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Request Dialog */}
       <Dialog open={isEditRequestDialogOpen} onOpenChange={setIsEditRequestDialogOpen}>

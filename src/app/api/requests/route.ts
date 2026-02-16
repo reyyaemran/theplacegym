@@ -22,7 +22,7 @@ async function generateRequestNumber(db: any): Promise<string> {
   const prefix = `REQ-${year}-`;
   
   // Find the latest request number for this year
-  const collection = db.collection<AppointmentRequest>("requests");
+  const collection = db.collection("requests");
   const latestRequest = await collection
     .find({ requestNumber: { $regex: `^${prefix}` } })
     .sort({ requestNumber: -1 })
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<AppointmentRequest>("requests");
+      const collection = db.collection("requests");
 
       const searchParams = request.nextUrl.searchParams;
       const status = searchParams.get("status");
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       if (requestedBy) query.requestedBy = requestedBy;
       if (appointmentId) query.appointmentId = appointmentId;
 
-      requests = await collection.find(query).sort({ createdAt: -1 }).toArray();
+      requests = await collection.find(query).sort({ createdAt: -1 }).toArray() as unknown as AppointmentRequest[];
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("MONGODB_URI")) {
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<AppointmentRequest>("requests");
+      const collection = db.collection("requests");
       
       // Generate unique request number
       const requestNumber = await generateRequestNumber(db);
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
       };
       
-      const result = await collection.insertOne(appointmentRequest as AppointmentRequest & { _id?: unknown });
+      const result = await collection.insertOne(appointmentRequest as any);
       const createdRequest: AppointmentRequest = {
         _id: result.insertedId.toString(),
         ...appointmentRequest,

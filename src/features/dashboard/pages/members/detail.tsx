@@ -10,13 +10,21 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Member, MemberDocument } from "./types/member";
 import { 
   ArrowLeft, 
-  Edit, 
   Mail, 
   Phone, 
   Calendar, 
@@ -26,7 +34,6 @@ import {
   User,
   FileText,
   Clock,
-  Settings,
   MessageSquare,
   CalendarDays,
   Activity,
@@ -74,6 +81,7 @@ import { Appointment } from "@/types/appointment";
 import { toast } from "sonner";
 import { ManageMembershipDialog } from "./components/manage-membership-dialog";
 import { ManagePTPackageDialog } from "./components/manage-pt-package-dialog";
+import { AddPackageDrawer } from "./components/add-package-drawer";
 import { useStaff as useStaffQuery } from "@/hooks/use-staff";
 import { useUpdateMember } from "@/hooks/use-members";
 
@@ -92,7 +100,7 @@ export function MemberDetailPage({
   useEffect(() => {
     if (member && member.memberNumber && id !== member.memberNumber) {
       // Update URL without page reload using Next.js router
-      router.replace(`/dashboard/members/${member.memberNumber}`, { scroll: false });
+      router.replace(`/dashboard/members/${currentMember.memberNumber}`, { scroll: false });
     }
   }, [member, id, router]);
   
@@ -173,6 +181,10 @@ export function MemberDetailPage({
   const [managePTPackageDialogOpen, setManagePTPackageDialogOpen] = useState(false);
   const [selectedMembershipRecord, setSelectedMembershipRecord] = useState<MembershipRecord | null>(null);
   const [selectedPTPackageRecord, setSelectedPTPackageRecord] = useState<PTPackageRecord | null>(null);
+  
+  // Drawer state for creating packages
+  const [createPackageDrawerOpen, setCreatePackageDrawerOpen] = useState(false);
+  const [selectedPackageTab, setSelectedPackageTab] = useState<"membership" | "pt-package">("membership");
 
   const handleManageMembership = (record: MembershipRecord) => {
     setSelectedMembershipRecord(record);
@@ -188,6 +200,18 @@ export function MemberDetailPage({
     // Refetch records after successful management
     refetchMemberships();
     refetchPTPackages();
+  };
+
+  const handleCreatePackage = () => {
+    setSelectedPackageTab("membership");
+    setCreatePackageDrawerOpen(true);
+  };
+
+  const handlePackageCreateSuccess = () => {
+    // Refetch records after successful creation
+    refetchMemberships();
+    refetchPTPackages();
+    setCreatePackageDrawerOpen(false);
   };
 
   // Document upload mutation
@@ -353,6 +377,9 @@ export function MemberDetailPage({
     );
   }
 
+  // At this point, member is guaranteed to be defined
+  const currentMember = member!;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -366,20 +393,6 @@ export function MemberDetailPage({
             Profile
           </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => router.push(`/dashboard/members?edit=${member.id}`)}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Profile
-          </Button>
-          <Button variant="outline" size="sm">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-        </div>
       </div>
 
       {/* Main Content */}
@@ -390,34 +403,34 @@ export function MemberDetailPage({
             <div className="flex flex-col items-center text-center space-y-4">
               {/* Avatar */}
               <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                <AvatarImage src="" alt={member.fullName} />
+                <AvatarImage src="" alt={currentMember.fullName} />
                 <AvatarFallback 
                   className="text-2xl font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" 
                   style={{ fontFamily: 'Montserrat, sans-serif' }}
                 >
-                  {getInitials(member.fullName)}
+                  {getInitials(currentMember.fullName)}
                 </AvatarFallback>
               </Avatar>
 
               {/* Name and Member ID */}
               <div className="space-y-1">
-                <h2 className="text-xl font-black italic tracking-tight uppercase font-montserrat">{member.fullName}</h2>
+                <h2 className="text-xl font-black italic tracking-tight uppercase font-montserrat">{currentMember.fullName}</h2>
                 <p className="text-sm text-muted-foreground font-mono">
-                  {formatMemberID(member.memberNumber)}
+                  {formatMemberID(currentMember.memberNumber)}
                 </p>
               </div>
 
               {/* Status Badge */}
               <Badge
-                variant={member.status === "active" ? "default" : "secondary"}
+                variant={currentMember.status === "active" ? "default" : "secondary"}
                 className="gap-1.5 px-3 py-1"
               >
-                {member.status === "active" ? (
+                {currentMember.status === "active" ? (
                   <Activity className="h-3.5 w-3.5" />
                 ) : (
                   <Clock className="h-3.5 w-3.5" />
                 )}
-                {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                {currentMember.status.charAt(0).toUpperCase() + currentMember.status.slice(1)}
               </Badge>
 
               {/* Message Button */}
@@ -446,7 +459,7 @@ export function MemberDetailPage({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Member ID</span>
                   <span className="font-medium font-mono">
-                    {formatMemberID(member.memberNumber)}
+                    {formatMemberID(currentMember.memberNumber)}
                   </span>
                 </div>
               </div>
@@ -682,41 +695,41 @@ export function MemberDetailPage({
                     </CardHeader>
                     <CardContent className="space-y-4 flex-1">
                       <div className="space-y-3">
-                        {member.email && (
+                        {currentMember.email && (
                           <div className="flex items-center gap-3">
                             <Mail className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-xs text-muted-foreground">Email</p>
-                              <p className="text-sm font-medium">{member.email}</p>
+                              <p className="text-sm font-medium">{currentMember.email}</p>
                             </div>
                           </div>
                         )}
-                        {member.phone && (
+                        {currentMember.phone && (
                           <div className="flex items-center gap-3">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-xs text-muted-foreground">Phone No</p>
-                              <p className="text-sm font-medium">{member.phone}</p>
+                              <p className="text-sm font-medium">{currentMember.phone}</p>
                             </div>
                           </div>
                         )}
-                        {member.dateOfBirth && (
+                        {currentMember.dateOfBirth && (
                           <div className="flex items-center gap-3">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-xs text-muted-foreground">Date of Birth</p>
                               <p className="text-sm font-medium">
-                                {format(new Date(member.dateOfBirth), "MMM d, yyyy")}
+                                {format(new Date(currentMember.dateOfBirth), "MMM d, yyyy")}
                               </p>
                             </div>
                           </div>
                         )}
-                        {member.address && (
+                        {currentMember.address && (
                           <div className="flex items-start gap-3">
                             <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                             <div>
                               <p className="text-xs text-muted-foreground">Address</p>
-                              <p className="text-sm font-medium">{member.address}</p>
+                              <p className="text-sm font-medium">{currentMember.address}</p>
                             </div>
                           </div>
                         )}
@@ -730,25 +743,25 @@ export function MemberDetailPage({
                     </CardHeader>
                     <CardContent className="space-y-4 flex-1">
                       <div className="space-y-3">
-                        {member.emergencyPhoneName && (
+                        {currentMember.emergencyPhoneName && (
                           <div className="flex items-center gap-3">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-xs text-muted-foreground">Emergency Name</p>
-                              <p className="text-sm font-medium">{member.emergencyPhoneName}</p>
+                              <p className="text-sm font-medium">{currentMember.emergencyPhoneName}</p>
                             </div>
                           </div>
                         )}
-                        {member.emergencyPhone && (
+                        {currentMember.emergencyPhone && (
                           <div className="flex items-center gap-3">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             <div>
                               <p className="text-xs text-muted-foreground">Emergency Phone</p>
-                              <p className="text-sm font-medium">{member.emergencyPhone}</p>
+                              <p className="text-sm font-medium">{currentMember.emergencyPhone}</p>
                             </div>
                           </div>
                         )}
-                        {(!member.emergencyPhoneName && !member.emergencyPhone) && (
+                        {(!currentMember.emergencyPhoneName && !currentMember.emergencyPhone) && (
                           <p className="text-sm text-muted-foreground">No emergency contact information</p>
                         )}
                       </div>
@@ -765,20 +778,20 @@ export function MemberDetailPage({
                   </CardHeader>
                   <CardContent className="space-y-4 flex-1">
                     <div className="space-y-4">
-                      {member.bloodType && (
+                      {currentMember.bloodType && (
                         <div className="flex items-center gap-3">
                           <Heart className="h-4 w-4 text-muted-foreground" />
                           <div>
                             <p className="text-xs text-muted-foreground">Blood Type</p>
-                            <p className="text-sm font-medium">{member.bloodType}</p>
+                            <p className="text-sm font-medium">{currentMember.bloodType}</p>
                           </div>
                         </div>
                       )}
-                      {member.medicine && member.medicine.length > 0 && (
+                      {currentMember.medicine && currentMember.medicine.length > 0 && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-2">Medicine</p>
                           <div className="flex flex-wrap gap-2">
-                            {member.medicine.map((med, index) => (
+                            {currentMember.medicine.map((med, index) => (
                               <Badge key={index} variant="outline" className="gap-1.5">
                                 <Pill className="h-3 w-3" />
                                 {med}
@@ -787,11 +800,11 @@ export function MemberDetailPage({
                           </div>
                         </div>
                       )}
-                      {member.allergies && member.allergies.length > 0 && (
+                      {currentMember.allergies && currentMember.allergies.length > 0 && (
                         <div>
                           <p className="text-xs text-muted-foreground mb-2">Allergies</p>
                           <div className="flex flex-wrap gap-2">
-                            {member.allergies.map((allergy, index) => (
+                            {currentMember.allergies.map((allergy, index) => (
                               <Badge key={index} variant="outline" className="gap-1.5">
                                 <AlertTriangle className="h-3 w-3 text-amber-600" />
                                 {allergy}
@@ -800,7 +813,7 @@ export function MemberDetailPage({
                           </div>
                         </div>
                       )}
-                      {!member.bloodType && (!member.medicine || member.medicine.length === 0) && (!member.allergies || member.allergies.length === 0) && (
+                      {!currentMember.bloodType && (!currentMember.medicine || currentMember.medicine.length === 0) && (!currentMember.allergies || currentMember.allergies.length === 0) && (
                         <p className="text-sm text-muted-foreground">No medical information available</p>
                       )}
                     </div>
@@ -843,7 +856,7 @@ export function MemberDetailPage({
                     />
                   </CardHeader>
                   <CardContent className="flex-1 overflow-hidden">
-                    <MemberDocumentsSection member={member} />
+                    <MemberDocumentsSection member={currentMember} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -855,20 +868,14 @@ export function MemberDetailPage({
       {/* Packages & Activity Table - Placed below all cards */}
       <Card>
         <Tabs defaultValue="packages" className="w-full">
-          <CardHeader className="pb-0">
-            <div className="flex items-center justify-between border-b pb-4">
-              <TabsList className="h-auto p-0 bg-transparent">
-                <TabsTrigger 
-                  value="packages" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-                >
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <TabsList className="grid w-full max-w-xs grid-cols-2">
+                <TabsTrigger value="packages" className="text-xs sm:text-sm">
                   <Package className="mr-2 h-4 w-4" />
                   Packages
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="activity" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-                >
+                <TabsTrigger value="activity" className="text-xs sm:text-sm">
                   <Activity className="mr-2 h-4 w-4" />
                   Activity
                 </TabsTrigger>
@@ -880,10 +887,7 @@ export function MemberDetailPage({
                       variant="outline" 
                       size="sm" 
                       className="h-8 text-xs"
-                      onClick={() => {
-                        // TODO: Open create membership/PT package dialog
-                        toast.info("Create package functionality coming soon");
-                      }}
+                      onClick={handleCreatePackage}
                     >
                       <Plus className="mr-1.5 h-3.5 w-3.5" />
                       Create
@@ -906,7 +910,7 @@ export function MemberDetailPage({
                               getPaymentTypeLabel(record.paymentType),
                               `$${record.amount.toFixed(2)}`,
                               format(new Date(record.paymentDate), "MMM d, yyyy"),
-                              'membership' in record ? getMembershipStatus(record as MembershipRecord).label : getPTPackageStatus(record as PTPackageRecord).label,
+                              'membership' in record ? getMembershipStatus(record as MembershipRecord, allMembershipRecords).label : getPTPackageStatus(record as PTPackageRecord).label,
                             ])
                           ].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
                           
@@ -914,7 +918,7 @@ export function MemberDetailPage({
                           const link = document.createElement("a");
                           const url = URL.createObjectURL(blob);
                           link.setAttribute("href", url);
-                          link.setAttribute("download", `member-packages-${member.fullName.replace(/\s+/g, "-")}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+                          link.setAttribute("download", `member-packages-${currentMember.fullName.replace(/\s+/g, "-")}-${format(new Date(), "yyyy-MM-dd")}.csv`);
                           link.style.visibility = "hidden";
                           document.body.appendChild(link);
                           link.click();
@@ -924,18 +928,146 @@ export function MemberDetailPage({
                           Export as Excel
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
-                          // Export to PDF
+                          // Export to PDF with styled design
                           const printWindow = window.open("", "_blank");
                           if (printWindow) {
-                            printWindow.document.write(`
+                            const totalAmount = sortedHistoryRecords.reduce((sum, record) => sum + record.amount, 0);
+                            const htmlContent = `
+                              <!DOCTYPE html>
                               <html>
-                                <head><title>Member Packages - ${member.fullName}</title></head>
+                                <head>
+                                  <title>Member Packages Report - ${currentMember.fullName}</title>
+                                  <link rel="preconnect" href="https://fonts.googleapis.com">
+                                  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                                  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+                                  <style>
+                                    @page {
+                                      size: landscape;
+                                      margin: 1cm;
+                                    }
+                                    @media print {
+                                      @page {
+                                        size: landscape;
+                                        margin: 1cm;
+                                      }
+                                    }
+                                    body {
+                                      font-family: Arial, sans-serif;
+                                      font-size: 12px;
+                                      padding: 20px;
+                                    }
+                                    .header {
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: center;
+                                      gap: 12px;
+                                      margin-bottom: 30px;
+                                    }
+                                    .logo-badge {
+                                      background-color: #000;
+                                      color: #fff;
+                                      width: 40px;
+                                      height: 40px;
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: center;
+                                      border-radius: 8px;
+                                      font-family: 'Montserrat', sans-serif;
+                                    }
+                                    .logo-badge span {
+                                      font-size: 14px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      line-height: 1;
+                                    }
+                                    .logo-text {
+                                      display: flex;
+                                      flex-direction: column;
+                                      text-align: left;
+                                      font-family: 'Montserrat', sans-serif;
+                                    }
+                                    .logo-text .logo-line1 {
+                                      font-size: 18px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      letter-spacing: 0.05em;
+                                      line-height: 1;
+                                    }
+                                    .logo-text .logo-line2 {
+                                      font-size: 18px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      letter-spacing: 0.05em;
+                                      line-height: 1;
+                                      margin-top: -2px;
+                                      padding-left: 0.6em;
+                                    }
+                                    h1 {
+                                      text-align: center;
+                                      margin-bottom: 20px;
+                                      font-family: 'Montserrat', sans-serif;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      font-size: 24px;
+                                      text-transform: uppercase;
+                                    }
+                                    .info {
+                                      margin-bottom: 15px;
+                                      font-size: 11px;
+                                      color: #666;
+                                    }
+                                    table {
+                                      width: 100%;
+                                      border-collapse: collapse;
+                                      margin-top: 20px;
+                                    }
+                                    th, td {
+                                      border: 1px solid #ddd;
+                                      padding: 8px;
+                                      text-align: left;
+                                    }
+                                    th {
+                                      background-color: #f2f2f2;
+                                      font-weight: bold;
+                                    }
+                                    tr:nth-child(even) {
+                                      background-color: #f9f9f9;
+                                    }
+                                    tr.summary-row {
+                                      background-color: #e5e5e5 !important;
+                                      font-weight: bold;
+                                    }
+                                    tr.summary-row td {
+                                      padding: 12px 8px;
+                                    }
+                                  </style>
+                                </head>
                                 <body>
-                                  <h1>Member Packages - ${member.fullName}</h1>
-                                  <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+                                  <div class="header">
+                                    <div class="logo-badge">
+                                      <span>TP</span>
+                                    </div>
+                                    <div class="logo-text">
+                                      <span class="logo-line1">THE</span>
+                                      <span class="logo-line2">PLACE</span>
+                                    </div>
+                                  </div>
+                                  <h1>Member Packages Report</h1>
+                                  <div class="info">
+                                    <p>Member: ${currentMember.fullName} (${formatMemberID(currentMember.memberNumber)})</p>
+                                    <p>Generated on: ${format(new Date(), "MMM dd, yyyy 'at' HH:mm")}</p>
+                                    <p>Total Records: ${sortedHistoryRecords.length}</p>
+                                  </div>
+                                  <table>
                                     <thead>
                                       <tr>
-                                        <th>Invoice</th><th>Package Type</th><th>Duration</th><th>Payment</th><th>Amount</th><th>Payment Date</th><th>Status</th>
+                                        <th>Invoice</th>
+                                        <th>Package Type</th>
+                                        <th>Duration</th>
+                                        <th>Payment</th>
+                                        <th>Amount</th>
+                                        <th>Payment Date</th>
+                                        <th>Status</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -943,20 +1075,28 @@ export function MemberDetailPage({
                                         <tr>
                                           <td>${record.invoiceNumber}</td>
                                           <td>${'membership' in record ? getMembershipTypeLabel((record as MembershipRecord).membershipType) : (record as PTPackageRecord).ptPackageName}</td>
-                                          <td>${format(new Date(record.startDate), "MMM d")} - ${format(new Date(record.expiryDate), "MMM d")}</td>
+                                          <td>${format(new Date(record.startDate), "MMM d")} - ${format(new Date(record.expiryDate), "MMM d, yyyy")}</td>
                                           <td>${getPaymentTypeLabel(record.paymentType)}</td>
                                           <td>$${record.amount.toFixed(2)}</td>
                                           <td>${format(new Date(record.paymentDate), "MMM d, yyyy")}</td>
-                                          <td>${'membership' in record ? getMembershipStatus(record as MembershipRecord).label : getPTPackageStatus(record as PTPackageRecord).label}</td>
+                                          <td>${'membership' in record ? getMembershipStatus(record as MembershipRecord, memberMembershipRecords).label : getPTPackageStatus(record as PTPackageRecord).label}</td>
                                         </tr>
                                       `).join("")}
+                                      <tr class="summary-row">
+                                        <td colspan="4"></td>
+                                        <td>$${totalAmount.toFixed(2)}</td>
+                                        <td colspan="2"></td>
+                                      </tr>
                                     </tbody>
                                   </table>
                                 </body>
                               </html>
-                            `);
+                            `;
+                            printWindow.document.write(htmlContent);
                             printWindow.document.close();
-                            printWindow.print();
+                            printWindow.onload = () => {
+                              printWindow.print();
+                            };
                           }
                         }}>
                           <FileText className="mr-2 h-4 w-4" />
@@ -991,7 +1131,7 @@ export function MemberDetailPage({
                           const link = document.createElement("a");
                           const url = URL.createObjectURL(blob);
                           link.setAttribute("href", url);
-                          link.setAttribute("download", `member-activity-${member.fullName.replace(/\s+/g, "-")}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+                          link.setAttribute("download", `member-activity-${currentMember.fullName.replace(/\s+/g, "-")}-${format(new Date(), "yyyy-MM-dd")}.csv`);
                           link.style.visibility = "hidden";
                           document.body.appendChild(link);
                           link.click();
@@ -1001,18 +1141,135 @@ export function MemberDetailPage({
                           Export as Excel
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
-                          // Export activities to PDF
+                          // Export activities to PDF with styled design
                           const printWindow = window.open("", "_blank");
                           if (printWindow) {
-                            printWindow.document.write(`
+                            const htmlContent = `
+                              <!DOCTYPE html>
                               <html>
-                                <head><title>Member Activity - ${member.fullName}</title></head>
+                                <head>
+                                  <title>Member Activity Report - ${currentMember.fullName}</title>
+                                  <link rel="preconnect" href="https://fonts.googleapis.com">
+                                  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                                  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+                                  <style>
+                                    @page {
+                                      size: landscape;
+                                      margin: 1cm;
+                                    }
+                                    @media print {
+                                      @page {
+                                        size: landscape;
+                                        margin: 1cm;
+                                      }
+                                    }
+                                    body {
+                                      font-family: Arial, sans-serif;
+                                      font-size: 12px;
+                                      padding: 20px;
+                                    }
+                                    .header {
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: center;
+                                      gap: 12px;
+                                      margin-bottom: 30px;
+                                    }
+                                    .logo-badge {
+                                      background-color: #000;
+                                      color: #fff;
+                                      width: 40px;
+                                      height: 40px;
+                                      display: flex;
+                                      align-items: center;
+                                      justify-content: center;
+                                      border-radius: 8px;
+                                      font-family: 'Montserrat', sans-serif;
+                                    }
+                                    .logo-badge span {
+                                      font-size: 14px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      line-height: 1;
+                                    }
+                                    .logo-text {
+                                      display: flex;
+                                      flex-direction: column;
+                                      text-align: left;
+                                      font-family: 'Montserrat', sans-serif;
+                                    }
+                                    .logo-text .logo-line1 {
+                                      font-size: 18px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      letter-spacing: 0.05em;
+                                      line-height: 1;
+                                    }
+                                    .logo-text .logo-line2 {
+                                      font-size: 18px;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      letter-spacing: 0.05em;
+                                      line-height: 1;
+                                      margin-top: -2px;
+                                      padding-left: 0.6em;
+                                    }
+                                    h1 {
+                                      text-align: center;
+                                      margin-bottom: 20px;
+                                      font-family: 'Montserrat', sans-serif;
+                                      font-weight: 900;
+                                      font-style: italic;
+                                      font-size: 24px;
+                                      text-transform: uppercase;
+                                    }
+                                    .info {
+                                      margin-bottom: 15px;
+                                      font-size: 11px;
+                                      color: #666;
+                                    }
+                                    table {
+                                      width: 100%;
+                                      border-collapse: collapse;
+                                      margin-top: 20px;
+                                    }
+                                    th, td {
+                                      border: 1px solid #ddd;
+                                      padding: 8px;
+                                      text-align: left;
+                                    }
+                                    th {
+                                      background-color: #f2f2f2;
+                                      font-weight: bold;
+                                    }
+                                    tr:nth-child(even) {
+                                      background-color: #f9f9f9;
+                                    }
+                                  </style>
+                                </head>
                                 <body>
-                                  <h1>Member Activity - ${member.fullName}</h1>
-                                  <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+                                  <div class="header">
+                                    <div class="logo-badge">
+                                      <span>TP</span>
+                                    </div>
+                                    <div class="logo-text">
+                                      <span class="logo-line1">THE</span>
+                                      <span class="logo-line2">PLACE</span>
+                                    </div>
+                                  </div>
+                                  <h1>Member Activity Report</h1>
+                                  <div class="info">
+                                    <p>Member: ${currentMember.fullName} (${formatMemberID(currentMember.memberNumber)})</p>
+                                    <p>Generated on: ${format(new Date(), "MMM dd, yyyy 'at' HH:mm")}</p>
+                                    <p>Total Records: ${memberActivities.length}</p>
+                                  </div>
+                                  <table>
                                     <thead>
                                       <tr>
-                                        <th>Date & Time</th><th>Type</th><th>Description</th><th>Performed By</th>
+                                        <th>Date & Time</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Performed By</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -1028,9 +1285,12 @@ export function MemberDetailPage({
                                   </table>
                                 </body>
                               </html>
-                            `);
+                            `;
+                            printWindow.document.write(htmlContent);
                             printWindow.document.close();
-                            printWindow.print();
+                            printWindow.onload = () => {
+                              printWindow.print();
+                            };
                           }
                         }}>
                           <FileText className="mr-2 h-4 w-4" />
@@ -1054,7 +1314,7 @@ export function MemberDetailPage({
                 pagination={historyPagination}
                 onPaginationChange={setHistoryPagination}
                 pageCount={historyPageCount}
-                member={member ? { id: member.id, memberNumber: member.memberNumber, fullName: member.fullName } : undefined}
+                member={currentMember ? { id: currentMember.id, memberNumber: currentMember.memberNumber, fullName: currentMember.fullName } : undefined}
                 onManageMembership={handleManageMembership}
                 onManagePTPackage={handleManagePTPackage}
               />
@@ -1115,6 +1375,66 @@ export function MemberDetailPage({
           }}
         />
       )}
+
+      {/* Create Package Drawer with Tabs */}
+      {member && (
+        <Drawer open={createPackageDrawerOpen} onOpenChange={setCreatePackageDrawerOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader className="pb-2 px-4 pt-4">
+              <DrawerTitle>Add Package</DrawerTitle>
+              <DrawerDescription>
+                Add a membership or PT package for {currentMember.fullName}
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <Tabs 
+                value={selectedPackageTab} 
+                onValueChange={(value) => setSelectedPackageTab(value as "membership" | "pt-package")}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
+                <div className="px-4 border-b">
+                  <TabsList className="grid w-full grid-cols-2 h-9">
+                    <TabsTrigger value="membership" className="gap-2 text-sm">
+                      <DollarSign className="h-4 w-4" />
+                      Membership
+                    </TabsTrigger>
+                    <TabsTrigger value="pt-package" className="gap-2 text-sm">
+                      <Activity className="h-4 w-4" />
+                      PT Package
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  <TabsContent value="membership" className="mt-0 flex-1 flex flex-col overflow-hidden">
+                    <AddPackageDrawer
+                      open={createPackageDrawerOpen && selectedPackageTab === "membership"}
+                      onOpenChange={(open) => {
+                        if (!open) setCreatePackageDrawerOpen(false);
+                      }}
+                      member={member}
+                      packageType="membership"
+                      onSuccess={handlePackageCreateSuccess}
+                      renderAsContent={true}
+                    />
+                  </TabsContent>
+                  <TabsContent value="pt-package" className="mt-0 flex-1 flex flex-col overflow-hidden">
+                    <AddPackageDrawer
+                      open={createPackageDrawerOpen && selectedPackageTab === "pt-package"}
+                      onOpenChange={(open) => {
+                        if (!open) setCreatePackageDrawerOpen(false);
+                      }}
+                      member={member}
+                      packageType="pt-package"
+                      onSuccess={handlePackageCreateSuccess}
+                      renderAsContent={true}
+                    />
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
     </div>
   );
 }
@@ -1142,17 +1462,41 @@ const getPaymentTypeLabel = (type: string): string => {
   return labels[type] || type;
 };
 
-const getMembershipStatus = (record: MembershipRecord) => {
+const getMembershipStatus = (record: MembershipRecord, allMembershipRecords: MembershipRecord[]) => {
   const now = new Date();
   const expiry = new Date(record.expiryDate);
-  const start = new Date(record.startDate);
   const daysUntilExpiry = differenceInDays(expiry, now);
-  const daysSinceStart = differenceInDays(now, start);
 
   if (expiry < now) return { status: "expired", label: "Expired" };
   if (daysUntilExpiry <= 7) return { status: "7_days_left", label: `${Math.max(0, daysUntilExpiry)} Days Left` };
   if (daysUntilExpiry <= 14) return { status: "expiring_soon", label: "Expiring Soon" };
-  if (daysSinceStart < 30) return { status: "new_member", label: "New Member" };
+  
+  // Check if this member has previous membership records
+  const previousRecords = allMembershipRecords.filter(
+    r => r.id !== record.id && 
+    r.memberId === record.memberId &&
+    new Date(r.paymentDate) < new Date(record.paymentDate)
+  );
+  
+  // If member has previous memberships, check if any are the same type (renewal)
+  if (previousRecords.length > 0) {
+    const hasSameTypeRenewal = previousRecords.some(
+      r => r.membershipType === record.membershipType
+    );
+    if (hasSameTypeRenewal) {
+      return { status: "renew", label: "Renew" };
+    }
+  }
+  
+  // If this is the first membership ever (no previous records), show "new_member"
+  if (previousRecords.length === 0) {
+    const start = new Date(record.startDate);
+    const daysSinceStart = differenceInDays(now, start);
+    if (daysSinceStart < 30) {
+      return { status: "new_member", label: "New Member" };
+    }
+  }
+  
   return { status: "active", label: "Active" };
 };
 

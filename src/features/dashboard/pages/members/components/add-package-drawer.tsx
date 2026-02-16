@@ -123,14 +123,21 @@ const packageSchema = z.object({
   issuedBy: z.string().min(1, "Issued by is required"),
   assignedTo: z.string().optional(),
   // Membership fields
+  membershipAssignedTo: z.string().optional(),
   membershipInvoiceNumber: z.string().optional(),
   membershipType: z.enum(["day_pass", "1_month", "3_month", "6_month", "1_year"]).optional(),
   membershipStartDate: z.date().optional(),
+  membershipPaymentType: z.enum(["cash", "card", "bank_transfer", "online", "other"]).optional(),
+  membershipPaymentDate: z.date().optional(),
+  membershipPaymentRemark: z.string().optional(),
   // PT Package fields
   ptPackageInvoiceNumber: z.string().optional(),
   ptPackageType: z.string().optional(),
   ptPackageStartDate: z.date().optional(),
-  // Payment fields
+  ptPackagePaymentType: z.enum(["cash", "card", "bank_transfer", "online", "other"]).optional(),
+  ptPackagePaymentDate: z.date().optional(),
+  ptPackagePaymentRemark: z.string().optional(),
+  // Payment fields (legacy - keeping for backward compatibility)
   paymentType: z.enum(["cash", "card", "bank_transfer", "online", "other"]).optional(),
   paymentDate: z.date().optional(),
   paymentRemark: z.string().optional(),
@@ -144,6 +151,7 @@ interface AddPackageDrawerProps {
   member: Member;
   packageType: "membership" | "pt-package";
   onSuccess?: () => void;
+  renderAsContent?: boolean; // If true, render only the form content without drawer wrapper
 }
 
 
@@ -173,9 +181,11 @@ export function AddPackageDrawer({
   member,
   packageType,
   onSuccess,
+  renderAsContent = false,
 }: AddPackageDrawerProps) {
   const [issuedByOpen, setIssuedByOpen] = useState(false);
   const [assignedToOpen, setAssignedToOpen] = useState(false);
+  const [membershipAssignedToOpen, setMembershipAssignedToOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch real data from API
@@ -193,6 +203,11 @@ export function AddPackageDrawer({
     return getStaffByDepartments(staffData, ["FC", "FCS", "PT", "PTS"]);
   }, [staffData]);
 
+  // Get eligible staff for Membership "Assigned To" (FC, FCS only)
+  const membershipEligibleStaff = useMemo(() => {
+    return getStaffByDepartments(staffData, ["FC", "FCS"]);
+  }, [staffData]);
+
   // Helper function to get initials from name
   const getInitials = (name: string) => {
     return name
@@ -208,12 +223,19 @@ export function AddPackageDrawer({
     defaultValues: {
       issuedBy: "",
       assignedTo: "",
+      membershipAssignedTo: "",
       membershipInvoiceNumber: "",
       membershipType: undefined,
       membershipStartDate: undefined,
+      membershipPaymentType: undefined,
+      membershipPaymentDate: undefined,
+      membershipPaymentRemark: "",
       ptPackageInvoiceNumber: "",
       ptPackageType: "",
       ptPackageStartDate: undefined,
+      ptPackagePaymentType: undefined,
+      ptPackagePaymentDate: undefined,
+      ptPackagePaymentRemark: "",
       paymentType: undefined,
       paymentDate: undefined,
       paymentRemark: "",
@@ -253,14 +275,21 @@ export function AddPackageDrawer({
       form.reset({
         issuedBy: "",
         assignedTo: "",
+        membershipAssignedTo: "",
         membershipInvoiceNumber: "",
         membershipType: undefined,
         membershipStartDate: undefined,
+        membershipPaymentType: undefined,
+        membershipPaymentDate: undefined,
+        membershipPaymentRemark: "",
         ptPackageInvoiceNumber: "",
         ptPackageType: "",
         ptPackageStartDate: undefined,
+        ptPackagePaymentType: undefined,
+        ptPackagePaymentDate: undefined,
+        ptPackagePaymentRemark: "",
         paymentType: undefined,
-        paymentDate: new Date(),
+        paymentDate: undefined,
         paymentRemark: "",
       });
     }
@@ -297,6 +326,8 @@ export function AddPackageDrawer({
           data.membershipType === "6_month" ? 6 : 12
         );
         const invoiceNumber = data.membershipInvoiceNumber || generateInvoiceNumber();
+        const paymentDate = data.membershipPaymentDate || data.paymentDate || new Date();
+        const membershipAssignedToStaff = data.membershipAssignedTo ? staffData.find(s => s._id === data.membershipAssignedTo) : null;
 
         await createMembershipRecordMutation.mutateAsync({
           memberId: member.memberNumber,
@@ -305,11 +336,11 @@ export function AddPackageDrawer({
           invoiceNumber,
           startDate: startDate.toISOString(),
           expiryDate: expiryDate.toISOString(),
-          paymentType: data.paymentType || "cash",
-          paymentDate: (data.paymentDate || new Date()).toISOString(),
+          paymentType: data.membershipPaymentType || data.paymentType || "cash",
+          paymentDate: paymentDate.toISOString(),
           amount: selectedMembership.price,
-          paymentRemark: data.paymentRemark || undefined,
-          assignedStaffName: assignedToStaff?.name || undefined,
+          paymentRemark: data.membershipPaymentRemark || data.paymentRemark || undefined,
+          assignedStaffName: membershipAssignedToStaff?.name || undefined,
           issuedBy: issuedByStaff?.name || undefined,
         });
 
@@ -325,6 +356,7 @@ export function AddPackageDrawer({
         const validityDays = selectedPTPackage.validityDays || 30;
         const expiryDate = addDays(startDate, validityDays);
         const invoiceNumber = data.ptPackageInvoiceNumber || generateInvoiceNumber();
+        const paymentDate = data.ptPackagePaymentDate || data.paymentDate || new Date();
 
         await createPTPackageRecordMutation.mutateAsync({
           memberId: member.memberNumber,
@@ -335,10 +367,10 @@ export function AddPackageDrawer({
           invoiceNumber,
           startDate: startDate.toISOString(),
           expiryDate: expiryDate.toISOString(),
-          paymentType: data.paymentType || "cash",
-          paymentDate: (data.paymentDate || new Date()).toISOString(),
+          paymentType: data.ptPackagePaymentType || data.paymentType || "cash",
+          paymentDate: paymentDate.toISOString(),
           amount: selectedPTPackage.price,
-          paymentRemark: data.paymentRemark || undefined,
+          paymentRemark: data.ptPackagePaymentRemark || data.paymentRemark || undefined,
           assignedStaffName: assignedToStaff?.name || undefined,
           issuedBy: issuedByStaff?.name || undefined,
         });
@@ -376,47 +408,51 @@ export function AddPackageDrawer({
   const isMembership = packageType === "membership";
   const isPTPackage = packageType === "pt-package";
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[96vh]">
-        <DrawerHeader className="border-b">
-          <DrawerTitle>
-            Add {isMembership ? "Membership" : "PT Package"} - {member.fullName}
-          </DrawerTitle>
-          <DrawerDescription>
-            Add a new {isMembership ? "membership" : "PT package"} for this member
-          </DrawerDescription>
-        </DrawerHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-            <ScrollArea className="flex-1 px-4 py-6">
-              <div className="space-y-4 max-w-2xl mx-auto">
-                {/* Issued By */}
-                <FormField
-                  control={form.control}
-                  name="issuedBy"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Issued By *</FormLabel>
-                      <Popover open={issuedByOpen} onOpenChange={setIssuedByOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value
-                                ? customerCareStaff.find((staff) => staff._id === field.value)?.name
-                                : "Select staff"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
+  const formContent = (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+        <ScrollArea className="flex-1 px-4 py-3">
+          <div className="space-y-3 max-w-2xl mx-auto">
+                {/* Issued By and Assigned To - 2x2 Layout */}
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="issuedBy"
+                    render={({ field }) => {
+                      const selectedStaff = field.value ? customerCareStaff.find((staff) => staff._id === field.value) : null;
+                      return (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Issued By *</FormLabel>
+                          <Popover open={issuedByOpen} onOpenChange={setIssuedByOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-start gap-2 h-9",
+                                    !field.value && "text-muted-foreground/60"
+                                  )}
+                                >
+                                  {selectedStaff ? (
+                                    <>
+                                      <Avatar className="h-5 w-5 shrink-0 border border-background">
+                                        <AvatarImage src="" />
+                                        <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                          {getInitials(selectedStaff.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs truncate flex-1 text-left">
+                                        {selectedStaff.name}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground/60">Select CC/CCS</span>
+                                  )}
+                                  <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
                         <PopoverContent className="w-[350px] p-0" align="start">
                           <Command>
                             <CommandInput placeholder="Search staff..." />
@@ -458,35 +494,136 @@ export function AddPackageDrawer({
                       </Popover>
                       <FormMessage />
                     </FormItem>
+                  );
+                }}
+              />
+              
+              {/* Assigned To (for Membership) */}
+                  {isMembership && (
+                    <FormField
+                      control={form.control}
+                      name="membershipAssignedTo"
+                      render={({ field }) => {
+                        const selectedStaff = field.value ? membershipEligibleStaff.find((staff) => staff._id === field.value) : null;
+                        return (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Assigned To</FormLabel>
+                            <Popover open={membershipAssignedToOpen} onOpenChange={setMembershipAssignedToOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      "w-full justify-start gap-2 h-9",
+                                      !field.value && "text-muted-foreground/60"
+                                    )}
+                                  >
+                                    {selectedStaff ? (
+                                      <>
+                                        <Avatar className="h-5 w-5 shrink-0 border border-background">
+                                          <AvatarImage src="" />
+                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                            {getInitials(selectedStaff.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs truncate flex-1 text-left">
+                                          {selectedStaff.name}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/60">Select FC/FCS</span>
+                                    )}
+                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                          <PopoverContent className="w-[350px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search FC/FCS..." />
+                              <CommandList className="max-h-[200px] overflow-y-auto">
+                                <CommandEmpty>No staff found.</CommandEmpty>
+                                <CommandGroup>
+                                  {membershipEligibleStaff.map((staff) => (
+                                    <CommandItem
+                                      key={staff._id}
+                                      value={`${staff.name} ${getDepartmentLabel(staff.department)}`}
+                                      onSelect={() => {
+                                        form.setValue("membershipAssignedTo", staff._id || "");
+                                        setMembershipAssignedToOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 pr-8 relative"
+                                    >
+                                      <Avatar className="h-8 w-8 shrink-0 border border-background">
+                                        <AvatarImage src="" />
+                                        <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                          {getInitials(staff.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="text-sm font-medium truncate">{staff.name}</span>
+                                        <span className="text-xs text-muted-foreground">{getDepartmentLabel(staff.department)}</span>
+                                      </div>
+                                      <Check
+                                        className={cn(
+                                          "h-4 w-4 shrink-0 absolute right-2",
+                                          field.value === staff._id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
                   )}
-                />
-
-                {/* Assigned To (for PT Package) */}
-                {isPTPackage && (
-                  <FormField
-                    control={form.control}
-                    name="assignedTo"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Assigned To</FormLabel>
-                        <Popover open={assignedToOpen} onOpenChange={setAssignedToOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className={cn(
-                                  "w-full justify-between",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value
-                                  ? eligibleStaff.find((staff) => staff._id === field.value)?.name
-                                  : "Select trainer"}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
+                  
+                  {/* Assigned To (for PT Package) */}
+                  {isPTPackage && (
+                    <FormField
+                      control={form.control}
+                      name="assignedTo"
+                      render={({ field }) => {
+                        const selectedStaff = field.value ? eligibleStaff.find((staff) => staff._id === field.value) : null;
+                        return (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Assigned To</FormLabel>
+                            <Popover open={assignedToOpen} onOpenChange={setAssignedToOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      "w-full justify-start gap-2 h-9",
+                                      !field.value && "text-muted-foreground/60"
+                                    )}
+                                  >
+                                    {selectedStaff ? (
+                                      <>
+                                        <Avatar className="h-5 w-5 shrink-0 border border-background">
+                                          <AvatarImage src="" />
+                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                            {getInitials(selectedStaff.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs truncate flex-1 text-left">
+                                          {selectedStaff.name}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/60">Select PT/PTS</span>
+                                    )}
+                                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
                           <PopoverContent className="w-[350px] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Search trainers..." />
@@ -528,24 +665,26 @@ export function AddPackageDrawer({
                         </Popover>
                         <FormMessage />
                       </FormItem>
-                    )}
-                  />
+                    );
+                  }}
+                />
                 )}
+                </div>
 
                 {/* Membership Fields */}
                 {isMembership && (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <FormField
                         control={form.control}
                         name="membershipInvoiceNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Invoice Number</FormLabel>
+                            <FormLabel>Membership Invoice</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Auto-generated"
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
                                 {...field}
                               />
                             </FormControl>
@@ -576,7 +715,7 @@ export function AddPackageDrawer({
                                 value={currentValue}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
                                     <SelectValue placeholder="Select membership type" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -629,6 +768,7 @@ export function AddPackageDrawer({
                       />
                     </div>
 
+                    {/* Start Date - Full Width */}
                     <FormField
                       control={form.control}
                       name="membershipStartDate"
@@ -641,7 +781,7 @@ export function AddPackageDrawer({
                                 <Button
                                   variant={"outline"}
                                   className={cn(
-                                    "w-full justify-start text-left font-normal",
+                                    "w-full justify-start text-left font-normal h-9",
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
@@ -670,23 +810,114 @@ export function AddPackageDrawer({
                         </FormItem>
                       )}
                     />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField
+                        control={form.control}
+                        name="membershipPaymentType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payment Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
+                                  <SelectValue placeholder="Select payment type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="card">Card</SelectItem>
+                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                <SelectItem value="online">Online</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="membershipPaymentDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Payment Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal h-9",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/60">Pick a date</span>
+                                    )}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                  components={{
+                                    Caption: CustomCaption,
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="membershipPaymentRemark"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Remark</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Remark" 
+                              className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </>
                 )}
 
                 {/* PT Package Fields */}
                 {isPTPackage && (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Invoice Number and PT Package Type - 2x2 Layout */}
+                    <div className="grid grid-cols-2 gap-3">
                       <FormField
                         control={form.control}
                         name="ptPackageInvoiceNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Invoice Number</FormLabel>
+                            <FormLabel>PT Invoice</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Auto-generated"
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
                                 {...field}
                               />
                             </FormControl>
@@ -706,7 +937,7 @@ export function AddPackageDrawer({
                               value={field.value}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
                                   <SelectValue placeholder="Select package" />
                                 </SelectTrigger>
                               </FormControl>
@@ -742,6 +973,7 @@ export function AddPackageDrawer({
                       />
                     </div>
 
+                    {/* Start Date - Full Width */}
                     <FormField
                       control={form.control}
                       name="ptPackageStartDate"
@@ -754,7 +986,7 @@ export function AddPackageDrawer({
                                 <Button
                                   variant={"outline"}
                                   className={cn(
-                                    "w-full justify-start text-left font-normal",
+                                    "w-full justify-start text-left font-normal h-9",
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
@@ -783,109 +1015,133 @@ export function AddPackageDrawer({
                         </FormItem>
                       )}
                     />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField
+                        control={form.control}
+                        name="ptPackagePaymentType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payment Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
+                                  <SelectValue placeholder="Select payment type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="card">Card</SelectItem>
+                                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                                <SelectItem value="online">Online</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="ptPackagePaymentDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Payment Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal h-9",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/60">Pick a date</span>
+                                    )}
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                  components={{
+                                    Caption: CustomCaption,
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="ptPackagePaymentRemark"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Remark</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Remark" 
+                              className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </>
                 )}
-
-                {/* Payment Fields */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="paymentType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select payment type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="card">Card</SelectItem>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="online">Online</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="paymentDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Payment Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/60">Pick a date</span>
-                                )}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                              components={{
-                                Caption: CustomCaption,
-                              }}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="paymentRemark"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payment Remark</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Optional payment notes"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
-            </ScrollArea>
+          </ScrollArea>
 
-            <DrawerFooter className="border-t pt-4">
-              <div className="flex justify-end gap-2">
+          {renderAsContent ? (
+            <div className="border-t pt-3 px-4 pb-3">
+              <div className="flex justify-center gap-3">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="min-w-[100px] h-9"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="min-w-[140px] h-9" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    `Add ${isMembership ? "Membership" : "PT Package"}`
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <DrawerFooter className="border-t pt-3">
+              <div className="flex justify-center gap-3">
                 <DrawerClose asChild>
-                  <Button type="button" variant="outline" className="flex-1">
+                  <Button type="button" variant="outline" className="min-w-[100px] h-9">
                     Cancel
                   </Button>
                 </DrawerClose>
-                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                <Button type="submit" className="min-w-[140px] h-9" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -897,8 +1153,27 @@ export function AddPackageDrawer({
                 </Button>
               </div>
             </DrawerFooter>
-          </form>
-        </Form>
+          )}
+        </form>
+      </Form>
+    );
+
+  if (renderAsContent) {
+    return formContent;
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[96vh]">
+        <DrawerHeader className="border-b">
+          <DrawerTitle>
+            Add {isMembership ? "Membership" : "PT Package"} - {member.fullName}
+          </DrawerTitle>
+          <DrawerDescription>
+            Add a new {isMembership ? "membership" : "PT package"} for this member
+          </DrawerDescription>
+        </DrawerHeader>
+        {formContent}
       </DrawerContent>
     </Drawer>
   );

@@ -71,7 +71,7 @@ const getMembershipTypeLabel = (type: MembershipType): string => {
     case "1_year":
       return "1 YEAR";
     default:
-      return type.toUpperCase();
+      return String(type).toUpperCase();
   }
 };
 
@@ -141,7 +141,7 @@ const getMembershipStatus = (
   return 'active';
 };
 
-// Calculate status for PT Package
+// Calculate status for PT Package - only based on expiry date, not start date
 const getPTPackageStatus = (
   startDate: string,
   expiryDate: string
@@ -162,13 +162,7 @@ const getPTPackageStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
-  
-  if (daysSinceStart < 30) {
-    return 'new_member';
-  }
-  
+  // PT packages should always show "active" if not expired, regardless of start date
   return 'active';
 };
 
@@ -176,6 +170,7 @@ const membershipStatusIconColors: Record<MembershipStatus, string> = {
   active: "text-emerald-600 dark:text-emerald-400",
   expired: "text-red-600 dark:text-red-400",
   new_member: "text-blue-600 dark:text-blue-400",
+  renew: "text-purple-600 dark:text-purple-400",
   expiring_soon: "text-amber-600 dark:text-amber-400",
   '7_days_left': "text-orange-600 dark:text-orange-400",
 };
@@ -428,6 +423,7 @@ export function CCIssuedRecordsTable({
             const statusOrder: Record<MembershipStatus, number> = {
               active: 1,
               new_member: 2,
+            renew: 2,
               expiring_soon: 3,
               '7_days_left': 4,
               expired: 5,
@@ -442,6 +438,7 @@ export function CCIssuedRecordsTable({
             const statusOrder: Record<MembershipStatus, number> = {
               active: 1,
               new_member: 2,
+            renew: 2,
               expiring_soon: 3,
               '7_days_left': 4,
               expired: 5,
@@ -494,6 +491,7 @@ export function CCIssuedRecordsTable({
             active: "Active",
             expired: "Expired",
             new_member: "New Member",
+            renew: "Renew",
             expiring_soon: "Expiring Soon",
             '7_days_left': "7 Days Left",
           };

@@ -23,6 +23,7 @@ import { MembersTableHeaderCell } from "@/features/dashboard/pages/members/compo
 
 interface MembershipRecordsTableProps {
   records: MembershipRecord[];
+  allMembershipRecords?: MembershipRecord[];
   totalRows: number;
   sorting: SortingState;
   onSort: OnChangeFn<SortingState>;
@@ -35,6 +36,7 @@ interface MembershipRecordsTableProps {
 
 export function MembershipRecordsTable({
   records,
+  allMembershipRecords = [],
   totalRows,
   sorting,
   onSort,

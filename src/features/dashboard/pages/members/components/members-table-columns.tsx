@@ -34,6 +34,7 @@ export const membershipStatusIconColors: Record<MembershipStatus, string> = {
   active: "text-emerald-600 dark:text-emerald-400",
   expired: "text-red-600 dark:text-red-400",
   new_member: "text-blue-600 dark:text-blue-400",
+  renew: "text-purple-600 dark:text-purple-400",
   expiring_soon: "text-amber-600 dark:text-amber-400",
   '7_days_left': "text-orange-600 dark:text-orange-400",
 };
@@ -459,6 +460,7 @@ export const useMemberColumns = ({
             active: "Active",
             expired: "Expired",
             new_member: "New Member",
+            renew: "Renewed",
             expiring_soon: "Expiring Soon",
             '7_days_left': `${daysLeft} Days Left`,
           };

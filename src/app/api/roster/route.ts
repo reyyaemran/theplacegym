@@ -9,33 +9,41 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get("month");
     const year = searchParams.get("year");
     const staffId = searchParams.get("staffId");
+    const startDate = searchParams.get("startDate"); // YYYY-MM-DD
+    const endDate = searchParams.get("endDate"); // YYYY-MM-DD
 
-    if (!month || !year) {
+    // Support either month/year or startDate/endDate range queries
+    if (!startDate && (!month || !year)) {
       return NextResponse.json(
-        { error: "Month and Year are required" },
+        { error: "Month/Year or startDate/endDate are required" },
         { status: 400 }
       );
     }
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<RosterRecord>("roster");
+      const collection = db.collection("roster");
 
-      // Construct date query
-      // We store dates as "YYYY-MM-DD" strings
-      // Regex to match YYYY-MM-*
-      const formattedMonth = month.padStart(2, "0");
-      const dateRegex = `^${year}-${formattedMonth}-`;
+      let query: any = {};
 
-      const query: any = {
-        date: { $regex: dateRegex },
-      };
+      if (startDate) {
+        // Date range query — dates are stored as "YYYY-MM-DD" strings, so $gte/$lte works
+        query.date = { $gte: startDate };
+        if (endDate) {
+          query.date.$lte = endDate;
+        }
+      } else {
+        // Original month/year regex query
+        const formattedMonth = month!.padStart(2, "0");
+        const dateRegex = `^${year}-${formattedMonth}-`;
+        query.date = { $regex: dateRegex };
+      }
 
       if (staffId) {
         query.staffId = staffId;
       }
 
-      const roster = await collection.find(query).toArray();
+      const roster = await collection.find(query).toArray() as unknown as RosterRecord[];
 
       return NextResponse.json(roster);
     } catch (error: unknown) {
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<RosterRecord>("roster");
+      const collection = db.collection("roster");
 
       // Update or Insert (Upsert)
       const filter = { staffId, date };

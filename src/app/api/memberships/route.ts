@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<MembershipRecord>("memberships");
+      const collection = db.collection("memberships");
 
       const searchParams = request.nextUrl.searchParams;
       const memberId = searchParams.get("memberId");
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       if (memberId) query.memberId = memberId;
       if (memberName) query.memberName = memberName;
 
-      records = await collection.find(query as any).sort({ startDate: -1 }).toArray();
+      records = await collection.find(query as any).sort({ startDate: -1 }).toArray() as unknown as MembershipRecord[];
 
       // Apply search filter if provided
       const search = searchParams.get("search");
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<MembershipRecord>("memberships");
+      const collection = db.collection("memberships");
       const recordWithId: MembershipRecord = {
         id: `membership-${Date.now()}`,
         ...record,

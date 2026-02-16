@@ -5,7 +5,7 @@ import { join } from "path";
 // Load environment variables
 dotenv.config({ path: join(process.cwd(), ".env.local") });
 
-const uri = process.env.MONGODB_URI;
+const uri: string = process.env.MONGODB_URI || "";
 
 if (!uri) {
   console.error("❌ MONGODB_URI is not set in .env.local");

@@ -127,6 +127,7 @@ export function useMembershipRecords({ initialRecords = mockMembershipRecords }:
           const statusOrder: Record<MembershipStatus, number> = {
             active: 1,
             new_member: 2,
+            renew: 2,
             expiring_soon: 3,
             '7_days_left': 4,
             expired: 5,

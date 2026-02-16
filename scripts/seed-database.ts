@@ -20,7 +20,7 @@ import { mockMembershipRecords } from "../src/features/dashboard/pages/membershi
 // Load environment variables
 dotenv.config({ path: join(process.cwd(), ".env.local") });
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI: string = process.env.MONGODB_URI || "";
 const DB_NAME = "theplace";
 
 if (!MONGODB_URI) {

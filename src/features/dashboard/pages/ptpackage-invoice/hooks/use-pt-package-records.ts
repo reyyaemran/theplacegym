@@ -84,7 +84,7 @@ export function usePTPackageRecords({ initialRecords = mockPTPackageRecords }: U
       return String(a).localeCompare(String(b)) * direction;
     };
 
-    // Helper to get PT Package status
+    // Helper to get PT Package status - only based on expiry date, not start date
     const getPTPackageStatus = (startDate: string, expiryDate: string): MembershipStatus => {
       const expiry = new Date(expiryDate);
       const now = new Date();
@@ -102,13 +102,7 @@ export function usePTPackageRecords({ initialRecords = mockPTPackageRecords }: U
         return 'expiring_soon';
       }
       
-      const start = new Date(startDate);
-      const daysSinceStart = differenceInDays(now, start);
-      
-      if (daysSinceStart < 30) {
-        return 'new_member';
-      }
-      
+      // PT packages should always show "active" if not expired, regardless of start date
       return 'active';
     };
 
@@ -124,6 +118,7 @@ export function usePTPackageRecords({ initialRecords = mockPTPackageRecords }: U
           const statusOrder: Record<MembershipStatus, number> = {
             active: 1,
             new_member: 2,
+            renew: 2,
             expiring_soon: 3,
             '7_days_left': 4,
             expired: 5,

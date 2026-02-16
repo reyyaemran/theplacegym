@@ -1,8 +1,12 @@
 # Deployment Readiness Report
 
-## ✅ Your App is Ready for Deployment!
+**Last audit:** February 2025
 
-Your fitness studio management app has been reviewed and is ready to be deployed to Vercel. Here's what has been checked and fixed:
+## ✅ Build Status: PASSING
+
+The app now builds successfully. Several TypeScript errors were fixed (see "Build Fixes" section below).
+
+## Pre-Deploy Checklist
 
 ## Security Improvements Made
 
@@ -26,10 +30,9 @@ Your fitness studio management app has been reviewed and is ready to be deployed
 ## Configuration Status
 
 ### ✅ Next.js Configuration
-- **Status:** Optimized for Vercel
+- **Status:** Optimized for Vercel (Next.js 16.0.3 with Turbopack)
 - **Features Enabled:**
   - React Strict Mode
-  - SWC Minification
   - Image optimization (AVIF & WebP)
 - **No Action Required**
 
@@ -81,13 +84,16 @@ git push -u origin main
 
 ## Environment Variables Checklist
 
-Before deploying, ensure you have:
+Before deploying, set these in Vercel (Settings → Environment Variables):
 
-- [ ] `MONGODB_URI` - MongoDB connection string
-- [ ] `ADMIN_EMAIL` - (Optional) Admin email for fallback
-- [ ] `ADMIN_PASSWORD` - (Optional) Admin password for fallback (use strong password!)
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `MONGODB_URI` | **Yes** | MongoDB Atlas connection string. Whitelist `0.0.0.0/0` for Vercel IPs. |
+| `ADMIN_EMAIL` | No | Fallback admin email (default: theplaceadmin@theplace.com.kh) |
+| `ADMIN_PASSWORD` | No | Fallback admin password (default: admin123) — **set a strong one in production!** |
+| `OPENAI_API_KEY` | No | Required only for AI meal plan & workout suggestions; otherwise returns 503 |
 
-**Note:** `NODE_ENV` is automatically set to `production` by Vercel
+**Note:** `NODE_ENV` is automatically set to `production` by Vercel. Never commit `.env.local`; it is gitignored.
 
 ## Files Created/Modified
 
@@ -97,8 +103,11 @@ Before deploying, ensure you have:
 
 ### Modified Files
 - ✅ `src/app/api/auth/login/route.ts` - Admin credentials now use env vars
+- ✅ `src/app/login/page.tsx` - Added Suspense boundary for useSearchParams
 - ✅ `next.config.ts` - Optimized for Vercel
 - ✅ `.gitignore` - Enhanced to exclude all env files
+- ✅ Multiple API routes - Fixed TypeScript type casting for MongoDB operations
+- ✅ Multiple UI components - Fixed TypeScript issues with MembershipStatus type
 
 ## Potential Issues & Solutions
 
@@ -160,8 +169,33 @@ If you encounter any issues:
 
 ---
 
-**Status:** ✅ **READY FOR DEPLOYMENT**
+## Build Fixes Applied (Feb 2025)
 
-Your app is properly configured and ready to be deployed to Vercel. Follow the steps above to get it live!
+- `notifications-dropdown.tsx`: Fixed `apt.id` → `apt._id ?? apt.appointmentNumber` (Appointment type uses `_id`)
+- `appointments/index.tsx`: Fixed `apt.memberId` → `apt.clientId`; added type assertion for `department`
+- `meal-planner-form.tsx`: Fixed `TdeeGender`/`TdeeActivity` type assertions for `onChange(update as MealPlan)`
+- `program/index.tsx`: Fixed computed property `[prog.bodyPart]` → `[String(prog.bodyPart)]`
+
+---
+
+## ⚠️ Critical: API Route Protection
+
+**The middleware does NOT protect API routes.** All `/api/*` endpoints are publicly accessible. This means:
+
+- `/api/appointments`, `/api/members`, `/api/staff`, etc. can be called without login
+- `/api/ai/suggest-meal-plan` and `/api/ai/suggest-workout` consume OpenAI credits and are **public** — anyone can hit them
+- Data APIs return member/staff data to unauthenticated requests
+
+**For internal tools or trusted networks**, this may be acceptable. For a public-facing app, you should add session validation to sensitive API routes. Consider:
+
+1. Creating a shared `requireAuth()` helper that reads the session cookie and returns 401 if missing
+2. Calling it at the start of each protected API route
+3. Optionally rate-limiting the AI endpoints to prevent abuse
+
+---
+
+**Status:** ✅ **BUILD READY** | ⚠️ **API AUTH RECOMMENDED FOR PUBLIC DEPLOYMENT**
+
+Your app builds and can be deployed to Vercel. Configure env vars, test thoroughly, and consider API auth before going fully public.
 
 

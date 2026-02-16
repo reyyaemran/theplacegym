@@ -18,7 +18,7 @@ async function generateAppointmentNumber(db: any): Promise<string> {
   const prefix = `APT-${year}-`;
   
   // Find the latest appointment number for this year
-  const collection = db.collection<Appointment>("appointments");
+  const collection = db.collection("appointments");
   const latestAppointment = await collection
     .find({ appointmentNumber: { $regex: `^${prefix}` } })
     .sort({ appointmentNumber: -1 })
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Appointment>("appointments");
+      const collection = db.collection("appointments");
 
       const searchParams = request.nextUrl.searchParams;
       const trainerId = searchParams.get("trainerId");
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       if (status) query.status = status;
       if (date) query.date = date;
 
-      appointments = await collection.find(query as any).sort({ date: -1, startTime: 1 }).toArray();
+      appointments = await collection.find(query as any).sort({ date: -1, startTime: 1 }).toArray() as unknown as Appointment[];
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Check for MongoDB connection errors or missing URI
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Appointment>("appointments");
+      const collection = db.collection("appointments");
       
       // Generate unique appointment number
       const appointmentNumber = await generateAppointmentNumber(db);
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
       };
       
-      const result = await collection.insertOne(appointment as Appointment & { _id?: unknown });
+      const result = await collection.insertOne(appointment as any);
       const createdAppointment: Appointment = {
         _id: result.insertedId.toString(),
         ...appointment,

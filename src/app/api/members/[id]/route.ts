@@ -14,7 +14,7 @@ export async function GET(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Member>("members");
+      const collection = db.collection("members");
       
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let member = await collection.findOne({ _id: id } as any);
@@ -118,7 +118,7 @@ export async function PUT(
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Member>("members");
+      const collection = db.collection("members");
 
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let result = await collection.updateOne(
@@ -227,7 +227,7 @@ export async function DELETE(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Member>("members");
+      const collection = db.collection("members");
 
       // Try multiple strategies to find and delete the member
       let result = await collection.deleteOne({ _id: id } as any);

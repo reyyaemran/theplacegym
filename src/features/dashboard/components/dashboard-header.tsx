@@ -3,8 +3,6 @@
 // External dependencies
 import React from "react";
 import {
-  BellIcon,
-  SearchIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
 } from "lucide-react";
@@ -13,8 +11,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { NotificationsDropdown } from "./notifications-dropdown";
 
 /**
  * DashboardHeader Component
@@ -53,26 +51,7 @@ export const DashboardHeader = () => {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9 rounded-full"
-          aria-label="Search"
-        >
-          <SearchIcon className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Search</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="icon"
-          className="relative h-9 w-9 rounded-full"
-          aria-label="Notifications"
-        >
-          <BellIcon className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-
+        <NotificationsDropdown />
         <ModeToggle />
       </div>
     </header>

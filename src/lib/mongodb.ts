@@ -1,4 +1,4 @@
-import { MongoClient, Db, MongoClientOptions } from "mongodb";
+import { MongoClient, Db, MongoClientOptions, Collection, Document } from "mongodb";
 
 const uri: string = process.env.MONGODB_URI || "";
 
@@ -61,3 +61,11 @@ export async function getDatabase(dbName: string = "theplace"): Promise<Db> {
   return client.db(dbName);
 }
 
+// Helper function to get a typed collection
+export async function getCollection<T extends Document>(
+  collectionName: string,
+  dbName: string = "theplace"
+): Promise<Collection<T>> {
+  const db = await getDatabase(dbName);
+  return db.collection<T>(collectionName);
+}

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { StaffFilters } from "../types/staff";
+import type { StaffFilters as StaffFiltersType } from "../types/staff";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StaffFiltersProps {
-  filters: StaffFilters;
-  onFiltersChange: (filters: Partial<StaffFilters>) => void;
+  filters: StaffFiltersType;
+  onFiltersChange: (filters: Partial<StaffFiltersType>) => void;
 }
 
 export function StaffFilters({

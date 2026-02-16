@@ -108,11 +108,11 @@ export async function POST(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
       // Find by email only first, then verify password/staffID
       staff = await collection.findOne({
         email: email.toLowerCase().trim(),
-      });
+      }) as Staff | null;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("MONGODB_URI")) {

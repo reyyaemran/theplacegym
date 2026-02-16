@@ -1,5 +1,6 @@
 import { PTPackageRecord, PTPackageRecordFilters, PaymentType } from "../types/pt-package-record";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
+import { MembershipStatus } from "@/features/dashboard/pages/membership-invoice/types/membership-record";
 
 const getPaymentTypeLabel = (type: PaymentType): string => {
   switch (type) {
@@ -18,7 +19,7 @@ const getPaymentTypeLabel = (type: PaymentType): string => {
   }
 };
 
-// Calculate PT Package status based on expiry date (same logic as membership)
+// Calculate PT Package status - only based on expiry date, not start date
 const getPTPackageStatus = (
   startDate: string,
   expiryDate: string
@@ -39,13 +40,7 @@ const getPTPackageStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
-  
-  if (daysSinceStart < 30) {
-    return 'new_member';
-  }
-  
+  // PT packages should always show "active" if not expired, regardless of start date
   return 'active';
 };
 
@@ -67,6 +62,7 @@ const getStatusLabel = (record: PTPackageRecord): string => {
     active: "Active",
     expired: "Expired",
     new_member: "New Member",
+    renew: "Renew",
     expiring_soon: "Expiring Soon",
     '7_days_left': "7 Days Left",
   };
@@ -173,6 +169,7 @@ export const exportToPDF = (records: PTPackageRecord[], filters?: PTPackageRecor
 
   // Create HTML table for PDF
   const tableRows = records.map((record) => {
+    const status = getStatusLabel(record);
     return `
       <tr>
         <td>${record.invoiceNumber}</td>
@@ -187,19 +184,17 @@ export const exportToPDF = (records: PTPackageRecord[], filters?: PTPackageRecor
         <td>${format(new Date(record.paymentDate), "MMM dd, yyyy")}</td>
         <td>${record.issuedBy || ""}</td>
         <td>${record.assignedStaffName || ""}</td>
+        <td>${status}</td>
       </tr>
     `;
   }).join("");
 
-  // Add summary row
+  // Add summary row (13 columns total - 8 empty + amount + 4 empty)
   const summaryRow = `
     <tr class="summary-row">
       <td colspan="8"></td>
       <td>$${totalRevenue.toFixed(2)}</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
+      <td colspan="4"></td>
     </tr>
   `;
 

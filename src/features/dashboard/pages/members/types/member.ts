@@ -1,5 +1,5 @@
 export type MemberStatus = 'active' | 'inactive' | 'pending' | 'blocked';
-export type MembershipStatus = 'active' | 'expired' | 'new_member' | 'expiring_soon' | '7_days_left';
+export type MembershipStatus = 'active' | 'expired' | 'new_member' | 'renew' | 'expiring_soon' | '7_days_left';
 export type MembershipType = 'day_pass' | '1_month' | '3_month' | '6_month' | '1_year';
 
 export interface MemberDocument {

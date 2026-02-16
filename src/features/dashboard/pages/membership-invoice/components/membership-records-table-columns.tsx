@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColumnDef } from "@tanstack/react-table";
 import { format, differenceInDays, addMonths, addDays } from "date-fns";
-import { CreditCard, Banknote, Globe, Wallet, CheckCircle2, XCircle, Clock, AlertTriangle, UserPlus, Edit, Trash2, MoreVertical } from "lucide-react";
+import { CreditCard, Banknote, Globe, Wallet, CheckCircle2, XCircle, Clock, AlertTriangle, UserPlus, RotateCcw, Edit, Trash2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -75,13 +75,12 @@ const getUsedDays = (startDate: string, expiryDate: string): number => {
   return Math.max(0, differenceInDays(now, start));
 };
 
-// Calculate membership status based on expiry date
+// Calculate membership status based on expiry date and previous memberships
 const getMembershipStatus = (
-  startDate: string,
-  expiryDate: string,
-  membershipType?: MembershipType
+  record: MembershipRecord,
+  allMembershipRecords?: MembershipRecord[]
 ): MembershipStatus => {
-  const expiry = new Date(expiryDate);
+  const expiry = new Date(record.expiryDate);
   const now = new Date();
   const daysUntilExpiry = differenceInDays(expiry, now);
   
@@ -97,11 +96,31 @@ const getMembershipStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
+  // Check if this member has previous membership records
+  // Exclude the current record from the check
+  const previousRecords = (allMembershipRecords || []).filter(
+    r => r.id !== record.id && 
+    r.memberId === record.memberId &&
+    new Date(r.paymentDate) < new Date(record.paymentDate)
+  );
   
-  if (daysSinceStart < 30) {
-    return 'new_member';
+  // If member has previous memberships, check if any are the same type (renewal)
+  if (previousRecords.length > 0) {
+    const hasSameTypeRenewal = previousRecords.some(
+      r => r.membershipType === record.membershipType
+    );
+    if (hasSameTypeRenewal) {
+      return 'renew';
+    }
+  }
+  
+  // If this is the first membership ever (no previous records), show "new_member"
+  if (previousRecords.length === 0) {
+    const start = new Date(record.startDate);
+    const daysSinceStart = differenceInDays(now, start);
+    if (daysSinceStart < 30) {
+      return 'new_member';
+    }
   }
   
   return 'active';
@@ -111,6 +130,7 @@ const membershipStatusIconColors: Record<MembershipStatus, string> = {
   active: "text-emerald-600 dark:text-emerald-400",
   expired: "text-red-600 dark:text-red-400",
   new_member: "text-blue-600 dark:text-blue-400",
+  renew: "text-purple-600 dark:text-purple-400",
   expiring_soon: "text-amber-600 dark:text-amber-400",
   '7_days_left': "text-orange-600 dark:text-orange-400",
 };
@@ -124,6 +144,8 @@ export const getMembershipStatusIcon = (status: MembershipStatus) => {
       return <XCircle className={`h-3 w-3 ${iconColor}`} />;
     case 'new_member':
       return <UserPlus className={`h-3 w-3 ${iconColor}`} />;
+    case 'renew':
+      return <RotateCcw className={`h-3 w-3 ${iconColor}`} />;
     case 'expiring_soon':
       return <AlertTriangle className={`h-3 w-3 ${iconColor}`} />;
     case '7_days_left':
@@ -347,14 +369,11 @@ export const useMembershipRecordsColumns = ({ onView, onEdit, onDelete }: UseMem
       {
         id: "membershipStatus",
         accessorFn: (row) => {
-          const status = getMembershipStatus(
-            row.startDate,
-            row.expiryDate,
-            row.membershipType
-          );
+          const status = getMembershipStatus(row);
           const statusOrder: Record<MembershipStatus, number> = {
             active: 1,
             new_member: 2,
+            renew: 2,
             expiring_soon: 3,
             '7_days_left': 4,
             expired: 5,
@@ -364,12 +383,8 @@ export const useMembershipRecordsColumns = ({ onView, onEdit, onDelete }: UseMem
         header: "Status",
         cell: ({ row }) => {
           const record = row.original;
-          // Calculate status based on expiry date
-          const membershipStatus = getMembershipStatus(
-            record.startDate,
-            record.expiryDate,
-            record.membershipType
-          );
+          // Calculate status based on expiry date and previous memberships
+          const membershipStatus = getMembershipStatus(record);
           
           // Calculate days left for 7_days_left status
           let daysLeft = 0;
@@ -383,6 +398,7 @@ export const useMembershipRecordsColumns = ({ onView, onEdit, onDelete }: UseMem
             active: "Active",
             expired: "Expired",
             new_member: "New Member",
+            renew: "Renew",
             expiring_soon: "Expiring Soon",
             '7_days_left': `${daysLeft} Days Left`,
           };

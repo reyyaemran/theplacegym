@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<PTPackage>("pt-package-types");
+      const collection = db.collection("pt-package-types");
 
       const searchParams = request.nextUrl.searchParams;
       const search = searchParams.get("search");
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         query.status = status;
       }
 
-      packages = await collection.find(query as any).sort({ sessions: 1 }).toArray();
+      packages = await collection.find(query as any).sort({ sessions: 1 }).toArray() as unknown as PTPackage[];
 
       // Apply search filter if provided
       if (search) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     };
 
     const db = await getDatabase();
-    const collection = db.collection<PTPackage>("pt-package-types");
+    const collection = db.collection("pt-package-types");
     const packageWithId: PTPackage = {
       id: `pt${Date.now()}`,
       ...ptPackage,

@@ -70,14 +70,18 @@ export function SidebarMenuWrapper({ item }: Props) {
   const isPopover = state === "collapsed" && !isMobile;
 
   // Check permission
-  // For appointments, also allow PT/PTS department (they need to manage their own appointments)
+  // For appointments, program (workout + meal): allow PT/PTS and FC (trainers + nutritionists)
   const isAppointmentsPage = item.url === "/dashboard/appointments";
+  const isProgramPage = item.url === "/dashboard/program";
   const isPTorPTS = staff?.department === "PT" || staff?.department === "PTS";
+  const isFC = staff?.department === "FC" || staff?.department === "FCS";
+  const canAccessPlanners = isPTorPTS || isFC;
   
   const hasPermission = 
     !item.requiredPermission || 
     isAdmin || 
     (isAppointmentsPage && isPTorPTS) || // Allow PT/PTS to access appointments
+    (isProgramPage && canAccessPlanners) || // Allow trainers + nutritionists for program & meal planner
     (staff?.permissions?.includes(item.requiredPermission));
 
   // If no permission, return null to hide the item

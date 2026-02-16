@@ -16,7 +16,7 @@ import { join } from "path";
 // Load environment variables
 dotenv.config({ path: join(process.cwd(), ".env.local") });
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI: string = process.env.MONGODB_URI || "";
 const DB_NAME = "theplace";
 
 if (!MONGODB_URI) {
@@ -26,8 +26,8 @@ if (!MONGODB_URI) {
 
 // Super Admin user data
 const SUPER_ADMIN = {
-  email: "theplaceadmin@theplace.com.kh",
-  password: "admin123", // In production, this should be hashed
+  email: process.env.ADMIN_EMAIL || "theplaceadmin@theplace.com.kh",
+  password: process.env.ADMIN_PASSWORD || "admin123", // In production, set ADMIN_PASSWORD env var
   name: "Super Admin",
   role: "SUPERADMIN",
   createdAt: new Date(),

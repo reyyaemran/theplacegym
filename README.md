@@ -66,6 +66,14 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### AI Suggestions (Program Page)
+
+The Workout and Meal Planner tabs include **AI Suggest** buttons. To enable:
+
+1. Create an API key at [platform.openai.com](https://platform.openai.com/api-keys)
+2. Add to `.env.local`: `OPENAI_API_KEY=sk-your-key-here`
+3. Restart the dev server
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

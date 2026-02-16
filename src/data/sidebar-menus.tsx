@@ -8,7 +8,8 @@ import {
   FileText,
   Calendar,
   Sparkles,
-} from "lucide-react";
+  ClipboardList,
+  } from "lucide-react";
 import { StaffPermission } from "@/types/staff";
 
 export const sidebarMenus = {
@@ -36,6 +37,12 @@ export const sidebarMenus = {
       url: "/dashboard/appointments",
       icon: CalendarClock,
       requiredPermission: "manage_roster" as StaffPermission, // Using manage_roster for appointments as well
+    },
+    {
+      title: "Program",
+      url: "/dashboard/program",
+      icon: ClipboardList,
+      requiredPermission: "manage_roster" as StaffPermission,
     },
     {
       title: "Roster",

@@ -31,7 +31,7 @@ import { differenceInDays } from "date-fns";
 import { MembershipStatus } from "@/features/dashboard/pages/members/types/member";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Calculate membership status (same logic as in table columns)
+// Calculate membership status - simplified version for stats (doesn't check renewals)
 const getMembershipStatus = (
   startDate: string,
   expiryDate: string
@@ -52,13 +52,7 @@ const getMembershipStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
-  
-  if (daysSinceStart < 30) {
-    return 'new_member';
-  }
-  
+  // For stats, we don't need to check renewals, just use active
   return 'active';
 };
 
@@ -250,6 +244,7 @@ export function MembershipsListPage() {
         <div className="overflow-x-auto">
           <MembershipRecordsTable
             records={records}
+            allMembershipRecords={allRecords}
             totalRows={allRecords.length}
             sorting={sorting}
             onSort={handleSortingChange}

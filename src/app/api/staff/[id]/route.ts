@@ -15,7 +15,7 @@ export async function GET(
     
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
       
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let staff = await collection.findOne({ _id: id } as any);
@@ -129,7 +129,7 @@ export async function PUT(
         // Check for uniqueness (excluding current staff)
         try {
           const db = await getDatabase();
-          const collection = db.collection<Staff>("staff");
+          const collection = db.collection("staff");
           
           // Find current staff to exclude from uniqueness check
           let currentStaff = await collection.findOne({ _id: id } as any);
@@ -167,18 +167,18 @@ export async function PUT(
     }
     
     // Include documents from body (now included in schema, but ensure it's preserved)
-    const updateData: Partial<Staff> = {
+    const updateData = {
       ...validatedData,
       // Use processed staffID if it was provided
       ...(processedStaffID !== undefined && { staffID: processedStaffID }),
       // Preserve documents from body if present
       documents: body.documents !== undefined ? body.documents : validatedData.documents,
       updatedAt: new Date(),
-    };
+    } as Partial<Staff>;
     
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
 
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let result = await collection.updateOne(
@@ -267,7 +267,7 @@ export async function DELETE(
     
     try {
       const db = await getDatabase();
-      const collection = db.collection<Staff>("staff");
+      const collection = db.collection("staff");
       
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let result = await collection.deleteOne({ _id: id } as any);

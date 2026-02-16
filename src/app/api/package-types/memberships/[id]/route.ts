@@ -14,7 +14,7 @@ export async function GET(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Membership>("membership-types");
+      const collection = db.collection("membership-types");
       
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let membership = await collection.findOne({ _id: id } as any);
@@ -105,7 +105,7 @@ export async function PUT(
 
     try {
       const db = await getDatabase();
-      const collection = db.collection<Membership>("membership-types");
+      const collection = db.collection("membership-types");
 
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let result = await collection.updateOne(
@@ -192,7 +192,7 @@ export async function DELETE(
   try {
     try {
       const db = await getDatabase();
-      const collection = db.collection<Membership>("membership-types");
+      const collection = db.collection("membership-types");
 
       // Try string ID first (since MongoDB stores IDs as strings in our case)
       let result = await collection.deleteOne({ _id: id } as any);

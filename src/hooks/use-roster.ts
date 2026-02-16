@@ -22,6 +22,33 @@ export function useRoster(month: number, year: number, staffId?: string) {
   });
 }
 
+/**
+ * Fetches roster records for a staff member from Jan 1 of the given year to the endDate.
+ * Used for calculating YTD working days, leave usage, and leave balance.
+ */
+export function useStaffYearRoster(staffId: string | undefined, year: number, endDate?: string) {
+  return useQuery({
+    queryKey: ["roster", "ytd", staffId, year, endDate],
+    queryFn: async () => {
+      if (!staffId) return [];
+      const startDate = `${year}-01-01`;
+      const end = endDate || new Date().toISOString().split("T")[0]; // Default to today
+
+      const params = new URLSearchParams();
+      params.append("startDate", startDate);
+      params.append("endDate", end);
+      params.append("staffId", staffId);
+
+      const response = await fetch(`/api/roster?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch staff year roster");
+      }
+      return response.json() as Promise<RosterRecord[]>;
+    },
+    enabled: !!staffId,
+  });
+}
+
 export function useUpdateRoster() {
   const queryClient = useQueryClient();
 

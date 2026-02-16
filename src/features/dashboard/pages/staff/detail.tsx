@@ -1269,18 +1269,137 @@ export function StaffDetailPage({
                     Export as Excel
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
-                    // Export appointments to PDF
+                    // Export appointments to PDF with styled design
                     const printWindow = window.open("", "_blank");
                     if (printWindow) {
-                      printWindow.document.write(`
+                      const htmlContent = `
+                        <!DOCTYPE html>
                         <html>
-                          <head><title>Appointments - ${displayStaff.name}</title></head>
+                          <head>
+                            <title>Appointments Report - ${displayStaff.name}</title>
+                            <link rel="preconnect" href="https://fonts.googleapis.com">
+                            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                            <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+                            <style>
+                              @page {
+                                size: landscape;
+                                margin: 1cm;
+                              }
+                              @media print {
+                                @page {
+                                  size: landscape;
+                                  margin: 1cm;
+                                }
+                              }
+                              body {
+                                font-family: Arial, sans-serif;
+                                font-size: 12px;
+                                padding: 20px;
+                              }
+                              .header {
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 12px;
+                                margin-bottom: 30px;
+                              }
+                              .logo-badge {
+                                background-color: #000;
+                                color: #fff;
+                                width: 40px;
+                                height: 40px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                border-radius: 8px;
+                                font-family: 'Montserrat', sans-serif;
+                              }
+                              .logo-badge span {
+                                font-size: 14px;
+                                font-weight: 900;
+                                font-style: italic;
+                                line-height: 1;
+                              }
+                              .logo-text {
+                                display: flex;
+                                flex-direction: column;
+                                text-align: left;
+                                font-family: 'Montserrat', sans-serif;
+                              }
+                              .logo-text .logo-line1 {
+                                font-size: 18px;
+                                font-weight: 900;
+                                font-style: italic;
+                                letter-spacing: 0.05em;
+                                line-height: 1;
+                              }
+                              .logo-text .logo-line2 {
+                                font-size: 18px;
+                                font-weight: 900;
+                                font-style: italic;
+                                letter-spacing: 0.05em;
+                                line-height: 1;
+                                margin-top: -2px;
+                                padding-left: 0.6em;
+                              }
+                              h1 {
+                                text-align: center;
+                                margin-bottom: 20px;
+                                font-family: 'Montserrat', sans-serif;
+                                font-weight: 900;
+                                font-style: italic;
+                                font-size: 24px;
+                                text-transform: uppercase;
+                              }
+                              .info {
+                                margin-bottom: 15px;
+                                font-size: 11px;
+                                color: #666;
+                              }
+                              table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-top: 20px;
+                              }
+                              th, td {
+                                border: 1px solid #ddd;
+                                padding: 8px;
+                                text-align: left;
+                              }
+                              th {
+                                background-color: #f2f2f2;
+                                font-weight: bold;
+                              }
+                              tr:nth-child(even) {
+                                background-color: #f9f9f9;
+                              }
+                            </style>
+                          </head>
                           <body>
-                            <h1>Appointments - ${displayStaff.name}</h1>
-                            <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
+                            <div class="header">
+                              <div class="logo-badge">
+                                <span>TP</span>
+                              </div>
+                              <div class="logo-text">
+                                <span class="logo-line1">THE</span>
+                                <span class="logo-line2">PLACE</span>
+                              </div>
+                            </div>
+                            <h1>Appointments Report</h1>
+                            <div class="info">
+                              <p>Staff: ${displayStaff.name}</p>
+                              <p>Generated on: ${format(new Date(), "MMM dd, yyyy 'at' HH:mm")}</p>
+                              <p>Total Records: ${allStaffAppointments.length}</p>
+                            </div>
+                            <table>
                               <thead>
                                 <tr>
-                                  <th>Date</th><th>Time</th><th>Client</th><th>Session Type</th><th>Duration</th><th>Status</th>
+                                  <th>Date</th>
+                                  <th>Time</th>
+                                  <th>Client</th>
+                                  <th>Session Type</th>
+                                  <th>Duration</th>
+                                  <th>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1298,9 +1417,12 @@ export function StaffDetailPage({
                             </table>
                           </body>
                         </html>
-                      `);
+                      `;
+                      printWindow.document.write(htmlContent);
                       printWindow.document.close();
-                      printWindow.print();
+                      printWindow.onload = () => {
+                        printWindow.print();
+                      };
                     }
                   }}>
                     <FileText className="mr-2 h-4 w-4" />

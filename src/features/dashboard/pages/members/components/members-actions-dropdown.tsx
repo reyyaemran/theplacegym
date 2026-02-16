@@ -16,7 +16,9 @@ import {
   Ban,
   Trash, 
   CalendarPlus,
-  CalendarClock
+  CalendarClock,
+  DollarSign,
+  Activity
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +35,14 @@ import { Button } from "@/components/ui/button";
 import { AddPackageDrawer } from "./add-package-drawer";
 import { ManageMembershipDialog } from "./manage-membership-dialog";
 import { ManagePTPackageDialog } from "./manage-pt-package-dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,8 +65,8 @@ interface MemberActionsProps {
 
 export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActionsProps) {
   const { canDelete } = useAuth();
-  const [membershipDrawerOpen, setMembershipDrawerOpen] = useState(false);
-  const [ptPackageDrawerOpen, setPTPackageDrawerOpen] = useState(false);
+  const [createPackageDrawerOpen, setCreatePackageDrawerOpen] = useState(false);
+  const [selectedPackageTab, setSelectedPackageTab] = useState<"membership" | "pt-package">("membership");
   const [manageMembershipDialogOpen, setManageMembershipDialogOpen] = useState(false);
   const [managePTPackageDialogOpen, setManagePTPackageDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -70,11 +80,17 @@ export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActions
   };
 
   const handleAddMembership = () => {
-    setMembershipDrawerOpen(true);
+    setSelectedPackageTab("membership");
+    setCreatePackageDrawerOpen(true);
   };
 
   const handleAddPTPackage = () => {
-    setPTPackageDrawerOpen(true);
+    setSelectedPackageTab("pt-package");
+    setCreatePackageDrawerOpen(true);
+  };
+
+  const handlePackageCreateSuccess = () => {
+    setCreatePackageDrawerOpen(false);
   };
 
   // Management handlers
@@ -196,19 +212,63 @@ export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActions
       </DropdownMenu>
     </div>
 
-      <AddPackageDrawer
-        type="membership"
-        open={membershipDrawerOpen}
-        onOpenChange={setMembershipDrawerOpen}
-        member={member}
-      />
-
-      <AddPackageDrawer
-        type="pt_package"
-        open={ptPackageDrawerOpen}
-        onOpenChange={setPTPackageDrawerOpen}
-        member={member}
-      />
+      {/* Create Package Drawer with Tabs */}
+      <Drawer open={createPackageDrawerOpen} onOpenChange={setCreatePackageDrawerOpen}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="pb-2 px-4 pt-4">
+            <DrawerTitle>Add Package</DrawerTitle>
+            <DrawerDescription>
+              Add a membership or PT package for {member.fullName}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <Tabs 
+              value={selectedPackageTab} 
+              onValueChange={(value) => setSelectedPackageTab(value as "membership" | "pt-package")}
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              <div className="px-4 border-b">
+                <TabsList className="grid w-full grid-cols-2 h-9">
+                  <TabsTrigger value="membership" className="gap-2 text-sm">
+                    <DollarSign className="h-4 w-4" />
+                    Membership
+                  </TabsTrigger>
+                  <TabsTrigger value="pt-package" className="gap-2 text-sm">
+                    <Activity className="h-4 w-4" />
+                    PT Package
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <TabsContent value="membership" className="mt-0 flex-1 flex flex-col overflow-hidden">
+                  <AddPackageDrawer
+                    open={createPackageDrawerOpen && selectedPackageTab === "membership"}
+                    onOpenChange={(open) => {
+                      if (!open) setCreatePackageDrawerOpen(false);
+                    }}
+                    member={member}
+                    packageType="membership"
+                    onSuccess={handlePackageCreateSuccess}
+                    renderAsContent={true}
+                  />
+                </TabsContent>
+                <TabsContent value="pt-package" className="mt-0 flex-1 flex flex-col overflow-hidden">
+                  <AddPackageDrawer
+                    open={createPackageDrawerOpen && selectedPackageTab === "pt-package"}
+                    onOpenChange={(open) => {
+                      if (!open) setCreatePackageDrawerOpen(false);
+                    }}
+                    member={member}
+                    packageType="pt-package"
+                    onSuccess={handlePackageCreateSuccess}
+                    renderAsContent={true}
+                  />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <ManageMembershipDialog
         open={manageMembershipDialogOpen}
@@ -227,7 +287,7 @@ export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActions
           <AlertDialogHeader>
             <AlertDialogTitle>Block Member</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to block {member.firstName} {member.lastName}? This member will not be able to check in or book classes.
+              Are you sure you want to block {member.fullName}? This member will not be able to check in or book classes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -244,7 +304,7 @@ export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActions
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Member</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {member.firstName} {member.lastName}? This action cannot be undone.
+              Are you sure you want to delete {member.fullName}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -38,6 +38,7 @@ import {
   Clock,
   MoreHorizontal,
   Settings,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,10 +101,10 @@ const getPaymentTypeLabel = (type: string): string => {
 
 // Use the same status calculation as membership records table
 const getMembershipStatus = (
-  startDate: string,
-  expiryDate: string
+  record: MembershipRecord,
+  allMembershipRecords: MembershipRecord[]
 ): MembershipStatus => {
-  const expiry = new Date(expiryDate);
+  const expiry = new Date(record.expiryDate);
   const now = new Date();
   const daysUntilExpiry = differenceInDays(expiry, now);
   
@@ -119,17 +120,36 @@ const getMembershipStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
+  // Check if this member has previous membership records
+  // Exclude the current record from the check
+  const previousRecords = allMembershipRecords.filter(
+    r => r.id !== record.id && 
+    new Date(r.paymentDate) < new Date(record.paymentDate)
+  );
   
-  if (daysSinceStart < 30) {
-    return 'new_member';
+  // If member has previous memberships, check if any are the same type (renewal)
+  if (previousRecords.length > 0) {
+    const hasSameTypeRenewal = previousRecords.some(
+      r => r.membershipType === record.membershipType
+    );
+    if (hasSameTypeRenewal) {
+      return 'renew';
+    }
+  }
+  
+  // If this is the first membership ever (no previous records), show "new_member"
+  if (previousRecords.length === 0) {
+    const start = new Date(record.startDate);
+    const daysSinceStart = differenceInDays(now, start);
+    if (daysSinceStart < 30) {
+      return 'new_member';
+    }
   }
   
   return 'active';
 };
 
-// Use the same status calculation as PT package records table
+// Calculate PT Package status - only based on expiry date, not start date
 const getPTPackageStatus = (
   startDate: string,
   expiryDate: string
@@ -150,13 +170,7 @@ const getPTPackageStatus = (
     return 'expiring_soon';
   }
   
-  const start = new Date(startDate);
-  const daysSinceStart = differenceInDays(now, start);
-  
-  if (daysSinceStart < 30) {
-    return 'new_member';
-  }
-  
+  // PT packages should always show "active" if not expired, regardless of start date
   return 'active';
 };
 
@@ -166,6 +180,7 @@ const getPTPackageStatusIcon = (status: MembershipStatus) => {
     active: "text-emerald-600 dark:text-emerald-400",
     expired: "text-red-600 dark:text-red-400",
     new_member: "text-blue-600 dark:text-blue-400",
+    renew: "text-purple-600 dark:text-purple-400",
     expiring_soon: "text-amber-600 dark:text-amber-400",
     '7_days_left': "text-orange-600 dark:text-orange-400",
   };
@@ -179,6 +194,8 @@ const getPTPackageStatusIcon = (status: MembershipStatus) => {
       return <XCircle className={`h-3 w-3 ${iconColor}`} />;
     case 'new_member':
       return <UserPlus className={`h-3 w-3 ${iconColor}`} />;
+    case 'renew':
+      return <RefreshCw className={`h-3 w-3 ${iconColor}`} />;
     case 'expiring_soon':
       return <AlertTriangle className={`h-3 w-3 ${iconColor}`} />;
     case '7_days_left':
@@ -373,7 +390,7 @@ export function MemberHistoryTable({
         header: "Status",
         accessorFn: (row) => {
           if (row.recordType === 'membership') {
-            return getMembershipStatus(row.startDate, row.expiryDate);
+            return getMembershipStatus(row as MembershipRecord, membershipRecords);
           } else {
             return getPTPackageStatus(row.startDate, row.expiryDate);
           }
@@ -382,7 +399,7 @@ export function MemberHistoryTable({
           const record = row.original;
           if (record.recordType === 'membership') {
             const membershipRecord = record as MembershipRecord;
-            const status = getMembershipStatus(membershipRecord.startDate, membershipRecord.expiryDate);
+            const status = getMembershipStatus(membershipRecord, membershipRecords);
             
             // Calculate days left for 7_days_left status
             let daysLeft = 0;
@@ -396,6 +413,7 @@ export function MemberHistoryTable({
               active: "Active",
               expired: "Expired",
               new_member: "New Member",
+              renew: "Renew",
               expiring_soon: "Expiring Soon",
               '7_days_left': `${daysLeft} Days Left`,
             };
@@ -434,6 +452,7 @@ export function MemberHistoryTable({
               active: "Active",
               expired: "Expired",
               new_member: "New Member",
+              renew: "Renew",
               expiring_soon: "Expiring Soon",
               '7_days_left': `${daysLeft} Days Left`,
             };
@@ -533,12 +552,12 @@ export function MemberHistoryTable({
 
         if (sort.id === "status") {
           if (a.recordType === 'membership') {
-            aValue = getMembershipStatus(a.startDate, a.expiryDate);
+            aValue = getMembershipStatus(a as MembershipRecord, membershipRecords);
           } else {
             aValue = getPTPackageStatus(a.startDate, a.expiryDate);
           }
           if (b.recordType === 'membership') {
-            bValue = getMembershipStatus(b.startDate, b.expiryDate);
+            bValue = getMembershipStatus(b as MembershipRecord, membershipRecords);
           } else {
             bValue = getPTPackageStatus(b.startDate, b.expiryDate);
           }
