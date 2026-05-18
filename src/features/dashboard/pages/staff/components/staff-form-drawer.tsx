@@ -48,6 +48,14 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { CaptionProps, useNavigation } from "react-day-picker";
 
+/** Format a Date to YYYY-MM-DD using local timezone (avoids UTC shift). */
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // Custom Caption Component - Only shows month and year dropdowns without labels
 function CustomCaption(props: CaptionProps) {
   const { goToMonth } = useNavigation();
@@ -188,7 +196,7 @@ export function StaffFormDrawer({
       monthlyConductTarget: undefined,
         commissionPercentage: undefined,
         shift: undefined,
-        hireDate: new Date().toISOString().split("T")[0],
+        hireDate: toLocalDateString(new Date()),
       annualLeaveBalance: undefined,
       sickLeaveBalance: undefined,
       publicHolidayBalance: undefined,
@@ -218,8 +226,8 @@ export function StaffFormDrawer({
         commissionPercentage: staff.commissionPercentage,
         shift: staff.shift,
         hireDate: staff.hireDate
-          ? new Date(staff.hireDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
+          ? toLocalDateString(new Date(staff.hireDate))
+          : toLocalDateString(new Date()),
         annualLeaveBalance: staff.annualLeaveBalance,
         sickLeaveBalance: staff.sickLeaveBalance,
         publicHolidayBalance: staff.publicHolidayBalance,
@@ -246,7 +254,7 @@ export function StaffFormDrawer({
         monthlyConductTarget: undefined,
         commissionPercentage: undefined,
         shift: undefined,
-        hireDate: new Date().toISOString().split("T")[0],
+        hireDate: toLocalDateString(new Date()),
         annualLeaveBalance: undefined,
         sickLeaveBalance: undefined,
         publicHolidayBalance: undefined,
@@ -407,7 +415,7 @@ export function StaffFormDrawer({
                     />
 
                     {/* Phone and Email in 2 columns */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="phone"
@@ -438,7 +446,7 @@ export function StaffFormDrawer({
                     </div>
 
                     {/* Staff ID and Date of Birth in 2 columns */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="staffID"
@@ -449,7 +457,7 @@ export function StaffFormDrawer({
                               <Input 
                                 {...field} 
                                 placeholder="e.g. 3386" 
-                                className="h-8 text-xs font-mono placeholder:text-xs" 
+                                className="h-8 text-xs font-mono placeholder:text-sm" 
                                 type="text"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
@@ -502,7 +510,7 @@ export function StaffFormDrawer({
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                   <Calendar
                                     mode="single"
                                     selected={dateValue}
@@ -539,7 +547,7 @@ export function StaffFormDrawer({
                         <FormItem>
                           <FormLabel className="text-xs">Address</FormLabel>
                           <FormControl>
-                            <Input {...field} className="h-8 text-xs placeholder:text-xs" placeholder="Enter address" />
+                            <Input {...field} className="h-8 text-sm" placeholder="Address" />
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -547,7 +555,7 @@ export function StaffFormDrawer({
                     />
 
                     {/* Emergency Phone Number - 2 columns */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="emergencyPhoneName"
@@ -555,7 +563,7 @@ export function StaffFormDrawer({
                           <FormItem>
                             <FormLabel className="text-xs">Emergency Contact Name</FormLabel>
                             <FormControl>
-                              <Input {...field} className="h-8 text-xs placeholder:text-xs" placeholder="Name" />
+                              <Input {...field} className="h-8 text-sm" placeholder="Name" />
                             </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
@@ -569,7 +577,7 @@ export function StaffFormDrawer({
                           <FormItem>
                             <FormLabel className="text-xs">Emergency Phone Number</FormLabel>
                             <FormControl>
-                              <Input {...field} className="h-8 text-xs placeholder:text-xs" placeholder="Phone" />
+                              <Input {...field} className="h-8 text-sm" placeholder="Phone" />
                             </FormControl>
                             <FormMessage className="text-xs" />
                           </FormItem>
@@ -580,7 +588,7 @@ export function StaffFormDrawer({
                 </TabsContent>
 
                 <TabsContent value="work-details" className="mt-0">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name="department"
@@ -714,12 +722,12 @@ export function StaffFormDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={dateValue}
                                   onSelect={(date) => {
-                                    field.onChange(date ? date.toISOString().split("T")[0] : "");
+                                    field.onChange(date ? toLocalDateString(date) : "");
                                   }}
                                   className="rounded-md border shadow-sm"
                                   fromDate={new Date(1900, 0, 1)}
@@ -816,7 +824,7 @@ export function StaffFormDrawer({
                     {/* Leave Balances Section */}
                     <div className="col-span-2 space-y-3 mt-2">
                       <h3 className="text-xs font-semibold text-muted-foreground border-b pb-1">Leave Entitlements (Annual)</h3>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField
                           control={form.control}
                           name="annualLeaveBalance"
@@ -829,8 +837,8 @@ export function StaffFormDrawer({
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                  className="h-8 text-xs placeholder:text-xs"
-                                  placeholder="Enter days"
+                                  className="h-8 text-sm"
+                                  placeholder="Days"
                                 />
                               </FormControl>
                               <FormMessage className="text-xs" />
@@ -849,8 +857,8 @@ export function StaffFormDrawer({
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                  className="h-8 text-xs placeholder:text-xs"
-                                  placeholder="Enter days"
+                                  className="h-8 text-sm"
+                                  placeholder="Days"
                                 />
                               </FormControl>
                               <FormMessage className="text-xs" />
@@ -869,8 +877,8 @@ export function StaffFormDrawer({
                                   {...field}
                                   value={field.value || ""}
                                   onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                  className="h-8 text-xs placeholder:text-xs"
-                                  placeholder="Enter days"
+                                  className="h-8 text-sm"
+                                  placeholder="Days"
                                 />
                               </FormControl>
                               <FormMessage className="text-xs" />

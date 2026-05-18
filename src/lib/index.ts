@@ -1,12 +1,9 @@
 /**
- * Central exports for library utilities
- * Import from "@/lib" instead of individual files for cleaner imports
+ * Central exports for library utilities.
  */
 
-// Core utilities
 export { cn } from "./utils";
 
-// Date utilities
 export {
   formatDate,
   getEventsForDay,
@@ -22,16 +19,6 @@ export {
   isTodayDate,
 } from "./date-utils";
 
-// Database
 export { default as clientPromise, getCollection } from "./mongodb";
 
-// Logging
 export { logger } from "./logger";
-
-// Mock data (for development/seeding)
-export {
-  mockAppointments,
-  mockClients,
-  mockIssues,
-  mockStaff,
-} from "./mock-data";

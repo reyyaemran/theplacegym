@@ -61,9 +61,10 @@ interface MemberActionsProps {
   member: Member;
   onEdit?: (member: Member) => void;
   onBlock?: (member: Member) => void;
+  detailBasePath?: string;
 }
 
-export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActionsProps) {
+export function MemberActionsDropdown({ member, onEdit, onBlock, detailBasePath = "/dashboard/members" }: MemberActionsProps) {
   const { canDelete } = useAuth();
   const [createPackageDrawerOpen, setCreatePackageDrawerOpen] = useState(false);
   const [selectedPackageTab, setSelectedPackageTab] = useState<"membership" | "pt-package">("membership");
@@ -76,7 +77,7 @@ export function MemberActionsDropdown({ member, onEdit, onBlock }: MemberActions
 
   const handleViewDetails = () => {
     // Use memberNumber in URL instead of MongoDB ID
-    router.push(`/dashboard/members/${member.memberNumber}`);
+    router.push(`${detailBasePath}/${member.memberNumber}`);
   };
 
   const handleAddMembership = () => {

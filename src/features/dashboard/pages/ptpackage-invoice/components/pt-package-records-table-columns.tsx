@@ -196,10 +196,35 @@ export const usePTPackageRecordsColumns = ({ onView, onEdit, onDelete, appointme
           const record = row.original;
           return (
             <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-              <span className="uppercase italic font-black text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="uppercase font-black text-foreground" >
                 {record.ptPackageName}
               </span>
             </Badge>
+          );
+        },
+      },
+      {
+        id: "sessions",
+        header: "Sessions",
+        size: 80,
+        cell: ({ row }) => {
+          const record = row.original;
+          const used = record.usedSessions;
+          const remaining = record.remainingSessions;
+          const total = record.ptPackageSessions;
+          if (used != null && remaining != null && !isNaN(used) && !isNaN(remaining)) {
+            return (
+              <span className="text-xs font-mono">
+                <span className="text-muted-foreground">{used}</span>
+                <span className="mx-1">/</span>
+                <span className="font-semibold">{remaining}</span>
+              </span>
+            );
+          }
+          return (
+            <span className="text-xs font-mono text-muted-foreground">
+              {total} total
+            </span>
           );
         },
       },
@@ -268,7 +293,7 @@ export const usePTPackageRecordsColumns = ({ onView, onEdit, onDelete, appointme
         cell: ({ row }) => {
           const record = row.original;
           return (
-            <span className="font-mono font-bold italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span className="font-mono font-bold italic" >
               ${record.amount.toFixed(2)}
             </span>
           );

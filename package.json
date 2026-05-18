@@ -1,5 +1,5 @@
 {
-  "name": "shadcn-crm-dashboard",
+  "name": "the-place",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -19,9 +19,11 @@
     "clear-package-records": "npx tsx scripts/clear-package-records.ts",
     "cleanup-old-members": "npx tsx scripts/cleanup-old-members.ts",
     "cleanup-old-invoice-records": "npx tsx scripts/cleanup-old-invoice-records.ts",
-    "test-member-flow": "npx tsx scripts/test-member-flow.ts",
-    "check-member-records": "npx tsx scripts/check-member-records.ts",
-    "fix-member-index": "npx tsx scripts/fix-member-index.ts"
+    "fix-member-index": "npx tsx scripts/fix-member-index.ts",
+    "import-pt-balance": "npx tsx scripts/import-pt-balance-excel.ts",
+    "fix-pt-trainer-assignments": "npx tsx scripts/fix-pt-package-trainer-assignments.ts",
+    "create-admin": "npx tsx scripts/create-admin.ts",
+    "smoke-test": "npx tsx scripts/smoke-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -66,6 +68,7 @@
     "dotenv": "^16.4.7",
     "embla-carousel-react": "^8.5.2",
     "geist": "^1.3.1",
+    "gsap": "^3.14.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.554.0",
     "mongodb": "^7.0.0",
@@ -81,15 +84,16 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "baseline-browser-mapping": "latest",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "baseline-browser-mapping": "latest",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "prettier": "^3.5.3",

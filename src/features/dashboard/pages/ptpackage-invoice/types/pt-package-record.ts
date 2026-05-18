@@ -17,7 +17,11 @@ export interface PTPackageRecord {
   amount: number;
   paymentRemark?: string;
   assignedStaffName?: string; // Personal Trainer assigned to this PT package
+  assignedStaffId?: string; // Staff ID of the assigned trainer (e.g. STAFFID from source system)
   issuedBy?: string; // CC, CCS, ASM, CM who issued/created this PT package
+  usedSessions?: number; // Used sessions (from import)
+  remainingSessions?: number; // Remaining sessions (from import)
+  ptContract?: string; // PT contract reference from source system
   createdAt?: string;
   updatedAt?: string;
 }

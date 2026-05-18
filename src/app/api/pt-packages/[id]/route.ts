@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { PTPackageRecord } from "@/features/dashboard/pages/ptpackage-invoice/types/pt-package-record";
-import { mockPTPackageRecords } from "@/features/dashboard/pages/ptpackage-invoice/data/mock-pt-package-records";
 import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { ptPackageRecordSchema } from "@/lib/validations/pt-package-record";
+
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
 
 export async function GET(
   request: NextRequest,
@@ -12,33 +18,26 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("pt-packages");
-      const record = await collection.findOne({ _id: new ObjectId(id) } as any);
-
-      if (!record) {
-        return NextResponse.json(
-          { error: "PT package record not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(record);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        const record = mockPTPackageRecords.find((r) => r.id === id);
-        if (!record) {
-          return NextResponse.json(
-            { error: "PT package record not found" },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json(record);
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("pt-packages/[id] GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("pt-packages");
+    const record = await collection.findOne({ _id: new ObjectId(id) } as any);
+
+    if (!record) {
+      return NextResponse.json(
+        { error: "PT package record not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(record);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
@@ -86,38 +85,31 @@ export async function PUT(
       ...validatedData,
     } as Partial<PTPackageRecord>;
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("pt-packages");
-
-      const result = await collection.updateOne(
-        { _id: new ObjectId(id) } as any,
-        { $set: updateData }
-      );
-
-      if (result.matchedCount === 0) {
-        return NextResponse.json(
-          { error: "PT package record not found" },
-          { status: 404 }
-        );
-      }
-
-      const updated = await collection.findOne({ _id: new ObjectId(id) } as any);
-      return NextResponse.json(updated);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        const record = mockPTPackageRecords.find((r) => r.id === id);
-        if (!record) {
-          return NextResponse.json(
-            { error: "PT package record not found" },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json({ ...record, ...updateData });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("pt-packages/[id] PUT: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("pt-packages");
+
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) } as any,
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: "PT package record not found" },
+        { status: 404 }
+      );
+    }
+
+    const updated = await collection.findOne({ _id: new ObjectId(id) } as any);
+    return NextResponse.json(updated);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
@@ -141,27 +133,27 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("pt-packages");
-
-      const result = await collection.deleteOne({ _id: new ObjectId(id) } as any);
-
-      if (result.deletedCount === 0) {
-        return NextResponse.json(
-          { error: "PT package record not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json({ success: true });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        return NextResponse.json({ success: true });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("pt-packages/[id] DELETE: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("pt-packages");
+
+    const result = await collection.deleteOne({ _id: new ObjectId(id) } as any);
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: "PT package record not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
@@ -178,4 +170,3 @@ export async function DELETE(
     );
   }
 }
-

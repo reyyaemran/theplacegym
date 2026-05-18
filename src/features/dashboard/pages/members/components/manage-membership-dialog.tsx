@@ -305,11 +305,11 @@ export function ManageMembershipDialog({
         <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Current Membership</span>
-            <Badge variant="outline" className="font-black italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <Badge variant="outline" className="font-black font-montserrat">
               {getMembershipTypeLabel(activeMembership.membershipType)}
             </Badge>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Start Date:</span>
               <p className="font-mono font-medium">{format(currentStart, "MMM dd, yyyy")}</p>
@@ -346,7 +346,7 @@ export function ManageMembershipDialog({
           <TabsContent value="extension" className="space-y-4 mt-4">
             <Form {...extensionForm}>
               <form onSubmit={extensionForm.handleSubmit(onExtensionSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={extensionForm.control}
                     name="extensionDays"
@@ -398,7 +398,7 @@ export function ManageMembershipDialog({
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                             <Calendar
                               mode="single"
                               selected={field.value}
@@ -427,7 +427,7 @@ export function ManageMembershipDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for extension..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -489,7 +489,7 @@ export function ManageMembershipDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -516,7 +516,7 @@ export function ManageMembershipDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for changing start date..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

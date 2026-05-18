@@ -4,6 +4,13 @@ import { MealPlan } from "@/features/dashboard/pages/meal-planner/types/meal-pla
 import { logger } from "@/lib/logger";
 import { mealPlanSchema } from "@/lib/validations/meal-plan";
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 function toMealPlan(doc: any): MealPlan {
   const id = doc._id?.toString?.() ?? doc.id;
   return {
@@ -15,29 +22,19 @@ function toMealPlan(doc: any): MealPlan {
 
 export async function GET(request: NextRequest) {
   try {
-    let plans: MealPlan[] = [];
-
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("meal-plans");
-
-      const raw = await collection.find({}).sort({ createdAt: -1 }).toArray();
-      plans = raw.map(toMealPlan);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (
-        errorMessage.includes("MONGODB_URI") ||
-        errorMessage.includes("MongoClient") ||
-        errorMessage.includes("connection")
-      ) {
-        logger.info(
-          "Using mock mode for meal plans (MongoDB not configured or connection failed)"
-        );
-        plans = [];
-      } else {
-        throw error;
-      }
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("meal-plans GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("meal-plans");
+
+    const raw = await collection.find({}).sort({ createdAt: -1 }).toArray();
+    const plans = raw.map(toMealPlan);
 
     return NextResponse.json(plans);
   } catch (error: unknown) {
@@ -79,30 +76,22 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("meal-plans");
-
-      const result = await collection.insertOne(doc as any);
-
-      return NextResponse.json(toMealPlan({ ...doc, _id: result.insertedId }), {
-        status: 201,
-      });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (
-        errorMessage.includes("MONGODB_URI") ||
-        errorMessage.includes("MongoClient") ||
-        errorMessage.includes("connection")
-      ) {
-        logger.info("MongoDB not available for meal plan creation");
-        return NextResponse.json(
-          { error: "Database not available. Please configure MongoDB." },
-          { status: 503 }
-        );
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("meal-plans POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("meal-plans");
+
+    const result = await collection.insertOne(doc as any);
+
+    return NextResponse.json(toMealPlan({ ...doc, _id: result.insertedId }), {
+      status: 201,
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(

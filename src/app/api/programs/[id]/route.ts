@@ -5,6 +5,13 @@ import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { workoutProgramSchema } from "@/lib/validations/workout-program";
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 function toProgram(doc: any): WorkoutProgram {
   const id = doc._id?.toString?.() ?? doc.id;
   return {
@@ -28,7 +35,15 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("programs/[id] GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("workout-programs");
 
     const doc = await findProgram(collection, id);
@@ -42,17 +57,6 @@ export async function GET(
 
     return NextResponse.json(toProgram(doc));
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (
-      errorMessage.includes("MONGODB_URI") ||
-      errorMessage.includes("MongoClient") ||
-      errorMessage.includes("connection")
-    ) {
-      return NextResponse.json(
-        { error: "Workout program not found" },
-        { status: 404 }
-      );
-    }
     logger.error(
       "Error fetching workout program",
       error instanceof Error ? error : undefined,
@@ -87,7 +91,15 @@ export async function PUT(
 
     const updateData = { ...validationResult.data };
 
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("programs/[id] PUT: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("workout-programs");
 
     const filter = /^[a-f0-9]{24}$/i.test(id)
@@ -126,7 +138,15 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("programs/[id] DELETE: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("workout-programs");
 
     const filter = /^[a-f0-9]{24}$/i.test(id)
@@ -144,14 +164,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (
-      errorMessage.includes("MONGODB_URI") ||
-      errorMessage.includes("MongoClient") ||
-      errorMessage.includes("connection")
-    ) {
-      return NextResponse.json({ success: true });
-    }
     logger.error(
       "Error deleting workout program",
       error instanceof Error ? error : undefined,

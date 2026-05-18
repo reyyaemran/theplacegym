@@ -146,7 +146,7 @@ export function MembershipsListPage() {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">MEMBERSHIP</h1>
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">MEMBERSHIP</h1>
       </div>
 
       {/* Stats Cards */}
@@ -162,7 +162,7 @@ export function MembershipsListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.totalMemberships}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.totalMemberships}</div>
             </div>
           </CardContent>
         </Card>
@@ -178,7 +178,7 @@ export function MembershipsListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">${stats.totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">${stats.totalRevenue.toFixed(2)}</div>
             </div>
           </CardContent>
         </Card>
@@ -194,7 +194,7 @@ export function MembershipsListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.activeMemberships}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.activeMemberships}</div>
             </div>
           </CardContent>
         </Card>
@@ -210,7 +210,7 @@ export function MembershipsListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.expiringSoon}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.expiringSoon}</div>
             </div>
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@ import { Appointment } from "@/types/appointment";
 import { MembershipRecord } from "@/features/dashboard/pages/membership-invoice/types/membership-record";
 import { PTPackageRecord } from "@/features/dashboard/pages/ptpackage-invoice/types/pt-package-record";
 import { parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { isRecordAssignedToStaff } from "@/lib/staff-assignment";
 
 export interface StaffMetrics {
   sales: number;
@@ -50,8 +51,8 @@ export function calculateStaffMetrics(
     // For PT/PTS: Calculate from PT Package records
     sales = ptPackageRecords
       .filter((record) => {
-        // Check if assigned to this trainer
-        if (record.assignedStaffName !== staff.name) return false;
+        // Check if assigned to this trainer (by ID or case-insensitive name)
+        if (!isRecordAssignedToStaff(record, staff)) return false;
         
         // Check if paymentDate is in the selected month (1st to last day)
         if (!record.paymentDate) return false;
@@ -69,8 +70,8 @@ export function calculateStaffMetrics(
     // For FC/FCS: Calculate from Membership records
     sales = membershipRecords
       .filter((record) => {
-        // Check if assigned to this consultant
-        if (record.assignedStaffName !== staff.name) return false;
+        // Check if assigned to this consultant (by ID or case-insensitive name)
+        if (!isRecordAssignedToStaff(record, staff)) return false;
         
         // Check if paymentDate is in the selected month (1st to last day)
         if (!record.paymentDate) return false;

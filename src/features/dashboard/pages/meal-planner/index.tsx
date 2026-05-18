@@ -191,7 +191,7 @@ export function MealPlannerPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">
           Meal Planner
         </h1>
         <div className="flex items-center gap-2">
@@ -199,10 +199,10 @@ export function MealPlannerPage() {
             <FilePlus className="mr-2 h-4 w-4" />
             New
           </Button>
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPDF} title="Export PDF">
+          <Button size="icon" variant="outline" className="h-10 w-10 min-w-10 min-h-10 shrink-0 sm:h-8 sm:w-8" onClick={handleExportPDF} title="Export PDF">
             <Download className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="secondary" className="h-8 w-8" onClick={handleShare} title="Share">
+          <Button size="icon" variant="secondary" className="h-10 w-10 min-w-10 min-h-10 shrink-0 sm:h-8 sm:w-8" onClick={handleShare} title="Share">
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
@@ -212,7 +212,7 @@ export function MealPlannerPage() {
         <Card className="lg:col-span-1">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm font-black italic tracking-tight uppercase font-montserrat">
+              <CardTitle className="text-sm font-black tracking-tight uppercase font-montserrat">
                 Saved Plans
               </CardTitle>
               <div className="relative w-full max-w-[140px] sm:max-w-[160px]">
@@ -221,7 +221,7 @@ export function MealPlannerPage() {
                   placeholder="Search client..."
                   value={savedPlanSearch}
                   onChange={(e) => setSavedPlanSearch(e.target.value)}
-                  className="h-8 pl-8 text-xs placeholder:text-xs"
+                  className="h-8 pl-8 text-xs placeholder:text-sm"
                 />
               </div>
             </div>
@@ -300,7 +300,7 @@ export function MealPlannerPage() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <UtensilsCrossed className="h-5 w-5" />
-                <CardTitle className="text-lg font-black italic tracking-tight uppercase font-montserrat">
+                <CardTitle className="text-lg font-black tracking-tight uppercase font-montserrat">
                   MEAL PLANNER
                 </CardTitle>
               </div>
@@ -443,7 +443,7 @@ export function MealPlannerPage() {
                     notesFeedback: e.target.value,
                   })
                 }
-                placeholder="Add notes or feedback for the client..."
+                placeholder="Notes..."
                 rows={4}
                 className="resize-none"
               />

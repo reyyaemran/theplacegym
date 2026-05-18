@@ -24,9 +24,7 @@ export function useMembershipRecords(filters?: {
       }
       return response.json() as Promise<MembershipRecord[]>;
     },
-    staleTime: 0, // Always consider data stale, refetch on mount
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 60 * 1000, // 1 min - avoid aggressive refetches on dashboard load
   });
 }
 

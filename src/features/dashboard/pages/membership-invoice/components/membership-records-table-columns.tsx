@@ -250,7 +250,7 @@ export const useMembershipRecordsColumns = ({ onView, onEdit, onDelete }: UseMem
           const record = row.original;
           return (
             <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-              <span className="uppercase italic font-black text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="uppercase font-black text-foreground" >
                 {getMembershipTypeLabel(record.membershipType)}
               </span>
             </Badge>
@@ -322,7 +322,7 @@ export const useMembershipRecordsColumns = ({ onView, onEdit, onDelete }: UseMem
         cell: ({ row }) => {
           const record = row.original;
           return (
-            <span className="font-mono font-bold italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span className="font-mono font-bold italic" >
               ${record.amount.toFixed(2)}
             </span>
           );

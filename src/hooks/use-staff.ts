@@ -12,6 +12,7 @@ export function useStaff(filters?: {
 }) {
   return useQuery({
     queryKey: ["staff", filters],
+    staleTime: 60 * 1000, // 1 min - staff list changes infrequently
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters?.department) params.append("department", filters.department);

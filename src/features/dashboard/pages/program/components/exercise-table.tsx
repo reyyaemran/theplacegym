@@ -72,7 +72,7 @@ export function ExerciseTable({ title, exercises, onChange }: ExerciseTableProps
                     <Input
                       value={ex.exercise}
                       onChange={(e) => updateExercise(ex.id, "exercise", e.target.value)}
-                      placeholder="Exercise name"
+                      placeholder="Exercise"
                       className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-ring/50"
                     />
                   </td>

@@ -14,6 +14,7 @@ export interface Member {
   id: string;
   memberNumber: string; // MemberID
   fullName: string;
+  avatar?: string; // Avatar image URL
   email: string;
   phone?: string; // Cambodia phone number
   company: string;

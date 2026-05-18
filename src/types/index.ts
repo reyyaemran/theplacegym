@@ -51,5 +51,12 @@ export type {
   StaffStatus,
 } from "./staff";
 
-// User types
-export type { User, UserRole } from "./user";
+// Staff Note types
+export type { StaffNote } from "./staff-note";
+
+// Leave Request types
+export type {
+  LeaveRequest,
+  LeaveRequestStatus,
+  LeaveRequestType,
+} from "./leave-request";

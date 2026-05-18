@@ -1,94 +1,94 @@
-# Shadcn CRM Dashboard - UI
+# THE PLACE — Gym CRM
 
-A modern CRM dashboard built with Next.js and Shadcn UI components, featuring a clean and responsive interface for managing customer relationships, sales, and analytics.
+Internal management dashboard for THE PLACE (Phnom Penh) — members, staff, appointments, roster, packages, reports, meal/workout planner.
 
-## Features
+Built on Next.js 15 (App Router) + React 19 + Tailwind + Shadcn UI + MongoDB.
 
-- **Modern UI**: Built with Shadcn UI components and Tailwind CSS
-- **Responsive Design**: Fully responsive dashboard that works on all devices
-- **Dashboard Analytics**: Visual representations of key metrics and customer data
-- **Multiple Modules**: Customers, Invoices, Leads, Orders, and more
-- **Dark Mode Support**: Toggle between light and dark themes
+## Quick start
 
-## Screenshots
+```bash
+# 1. Install deps
+npm install
 
-### Dashboard Views
-![Dashboard Overview](public/app-screenshots/dashboard-1.png)
-![Dashboard Analytics](public/app-screenshots/dashboard-2.png)
-![Dashboard Customers](public/app-screenshots/dashboard-3.png)
+# 2. Set env vars
+cp .env.example .env.local
+# then edit .env.local — at minimum set MONGODB_URI
 
-### Landing Page
-![Landing Page](public/app-screenshots/landing.png)
+# 3. Create the first admin user (writes a hashed password to the staff collection)
+npm run create-admin
 
-### Mobile Experience
-<div style="display: flex; justify-content: space-between;">
-  <img src="public/app-screenshots/mobile-1.png" alt="Mobile Dashboard" width="32%" />
-  <img src="public/app-screenshots/mobile-2.png" alt="Mobile Analytics" width="32%" />
-  <img src="public/app-screenshots/mobile-3.png" alt="Mobile Navigation" width="32%" />
-</div>
+# 4. Run dev server
+npm run dev
+# → http://localhost:3000/login
+```
 
-## Project Structure
+Sign in with the email + password printed by `create-admin`.
+
+## Required environment variables
+
+| Var | Required | Purpose |
+| --- | --- | --- |
+| `MONGODB_URI` | yes | MongoDB Atlas connection string |
+| `ADMIN_EMAIL` | no | Email for the seeded admin (default `admin@theplacepp.com`) |
+| `ADMIN_PASSWORD` | no | Initial password for the seeded admin (default `Theplace2026`) |
+| `ADMIN_NAME` | no | Display name for the seeded admin |
+| `OPENAI_API_KEY` | no | Enables AI workout / meal-plan suggestions |
+
+`.env.local` is gitignored — never commit it.
+
+## Useful scripts
+
+```bash
+npm run dev                       # Next.js dev server
+npm run build                     # Production build
+npm run lint                      # ESLint
+npm run create-admin              # Seed / update the admin staff row
+npm run hash-existing-passwords   # One-shot: hash any legacy plaintext passwords in staff
+npm run smoke-test                # Hit each API route with a small fixture
+npm run seed-db                   # Seed dev DB with mock data
+npm run reset-db                  # Drop + reseed dev DB
+```
+
+## Password handling
+
+Passwords are hashed with Node's built-in `scrypt` (`src/lib/password.ts`) and stored in the form `scrypt$<salt>$<hash>`. The login route accepts both formats and silently upgrades any legacy plaintext row on its next successful sign-in. To bulk-upgrade existing rows in one pass, run `npm run hash-existing-passwords`.
+
+There is no forgot-password flow at the moment — admins reset passwords directly via the Staff page in the dashboard. (If you want self-service reset back, you'll need to add an email provider and re-enable an OTP route.)
+
+## Permissions & departments
+
+Sidebar items and pages gate on a permission key (see `src/types/staff.ts` for the full list). Each department gets a default permission set (`DEFAULT_PERMISSIONS_BY_DEPARTMENT`), which the staff create flow applies unless an explicit permission list is provided.
+
+PT and PTS staff see "Active Clients" instead of "Members"; everyone else sees Members.
+
+## Project structure
 
 ```
 src/
-├── app/                 # Next.js App Router
-│   ├── dashboard/       # Dashboard routes
-│   └── page.tsx         # Landing page
-├── components/
-│   ├── ui/              # Shadcn UI components
-│   └── shared/          # Shared components
-├── features/
-│   ├── dashboard/       # Dashboard feature components
-│   │   ├── components/  # Dashboard UI components 
-│   │   └── pages/       # Dashboard page components
-│   └── landing/         # Landing page components
+├── app/                # Next.js App Router
+│   ├── api/            # API routes (MongoDB-backed, no mock fallbacks)
+│   ├── dashboard/      # Authenticated dashboard pages
+│   └── login/          # Login page
+├── components/         # Shared UI (Shadcn + project-specific)
+├── data/               # Static config — sidebar menus etc.
+├── features/dashboard/ # Page-level feature folders (one per dashboard route)
+├── hooks/              # React Query data hooks
+├── lib/                # Server-side helpers (mongodb, logger, password, etc.)
+├── providers/          # Auth + theme + react-query providers
+└── types/              # Shared TS types
+scripts/                # One-off ops scripts (create-admin, smoke-test, migrations)
 ```
 
-## Tech Stack
+## Tech notes
 
-- **Framework**: Next.js 15.x with React 19
-- **Styling**: Tailwind CSS
-- **UI Components**: Shadcn UI with Radix UI primitives
+* **API routes** return `503 { error: "Database unavailable…" }` when MongoDB is unreachable instead of serving mock data. If you need to demo with no DB, run `npm run seed-db` against a local Mongo, or add a temporary mock route locally.
+* **Roster** API requires `month` + `year` query params. The UI defaults to the current month on open.
+* **Heavy pages** (Appointments, Members form, Overview) are scheduled for refactoring — see `AUDIT-VS-CURSOR.md` for the punch list.
 
-## Getting Started
+## Deployment
 
-First, run the development server:
+See `DEPLOYMENT.md` for the Vercel + MongoDB Atlas setup. `vercel.json` is committed.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## License
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### AI Suggestions (Program Page)
-
-The Workout and Meal Planner tabs include **AI Suggest** buttons. To enable:
-
-1. Create an API key at [platform.openai.com](https://platform.openai.com/api-keys)
-2. Add to `.env.local`: `OPENAI_API_KEY=sk-your-key-here`
-3. Restart the dev server
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Internal — © THE PLACE. See `LICENSE`.

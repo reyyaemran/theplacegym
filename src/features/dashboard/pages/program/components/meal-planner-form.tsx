@@ -54,7 +54,7 @@ export function MealPlannerForm({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <UtensilsCrossed className="h-5 w-5" />
-            <CardTitle className="text-lg font-black italic tracking-tight uppercase font-montserrat">
+            <CardTitle className="text-lg font-black tracking-tight uppercase font-montserrat">
               MEAL PLANNER
             </CardTitle>
           </div>
@@ -354,7 +354,7 @@ export function MealPlannerForm({
           <Textarea
             value={plan.notesFeedback}
             onChange={(e) => onChange({ ...plan, notesFeedback: e.target.value })}
-            placeholder="e.g. Gluten-free, prefers 3 meals – AI adapts diet and meal count"
+            placeholder="e.g. Gluten-free, 3 meals"
             rows={4}
             className="resize-none"
           />

@@ -3,6 +3,13 @@ import { getDatabase } from "@/lib/mongodb";
 import { RosterRecord } from "@/types/roster";
 import { logger } from "@/lib/logger";
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -20,42 +27,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("roster");
-
-      let query: any = {};
-
-      if (startDate) {
-        // Date range query — dates are stored as "YYYY-MM-DD" strings, so $gte/$lte works
-        query.date = { $gte: startDate };
-        if (endDate) {
-          query.date.$lte = endDate;
-        }
-      } else {
-        // Original month/year regex query
-        const formattedMonth = month!.padStart(2, "0");
-        const dateRegex = `^${year}-${formattedMonth}-`;
-        query.date = { $regex: dateRegex };
-      }
-
-      if (staffId) {
-        query.staffId = staffId;
-      }
-
-      const roster = await collection.find(query).toArray() as unknown as RosterRecord[];
-
-      return NextResponse.json(roster);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check for MongoDB connection errors or missing URI
-      if (errorMessage.includes("MONGODB_URI") || errorMessage.includes("MongoClient") || errorMessage.includes("connection")) {
-        // Return empty array when MongoDB is not configured or connection fails
-        logger.info("Using mock roster data (MongoDB not configured or connection failed)");
-        return NextResponse.json([]);
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("roster GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("roster");
+
+    let query: any = {};
+
+    if (startDate) {
+      // Date range query — dates are stored as "YYYY-MM-DD" strings, so $gte/$lte works
+      query.date = { $gte: startDate };
+      if (endDate) {
+        query.date.$lte = endDate;
+      }
+    } else {
+      // Original month/year regex query
+      const formattedMonth = month!.padStart(2, "0");
+      const dateRegex = `^${year}-${formattedMonth}-`;
+      query.date = { $regex: dateRegex };
+    }
+
+    if (staffId) {
+      query.staffId = staffId;
+    }
+
+    const roster = await collection.find(query).toArray() as unknown as RosterRecord[];
+
+    return NextResponse.json(roster);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error("Error fetching roster", errorMessage instanceof Error ? errorMessage : undefined, {
@@ -81,39 +85,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("roster");
-
-      // Update or Insert (Upsert)
-      const filter = { staffId, date };
-      const update = {
-        $set: {
-          staffId,
-          date,
-          status,
-          shiftType,
-          leaveType,
-          updatedAt: new Date(),
-        },
-        $setOnInsert: {
-          createdAt: new Date(),
-        },
-      };
-
-      const result = await collection.updateOne(filter, update, { upsert: true });
-
-      return NextResponse.json({ success: true, result });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check for MongoDB connection errors or missing URI
-      if (errorMessage.includes("MONGODB_URI") || errorMessage.includes("MongoClient") || errorMessage.includes("connection")) {
-        // Return success in mock mode
-        logger.info("Using mock mode for roster record creation (MongoDB not configured or connection failed)");
-        return NextResponse.json({ success: true });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("roster POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("roster");
+
+    // Update or Insert (Upsert)
+    const filter = { staffId, date };
+    const update = {
+      $set: {
+        staffId,
+        date,
+        status,
+        shiftType,
+        leaveType,
+        updatedAt: new Date(),
+      },
+      $setOnInsert: {
+        createdAt: new Date(),
+      },
+    };
+
+    const result = await collection.updateOne(filter, update, { upsert: true });
+
+    return NextResponse.json({ success: true, result });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error("Error saving roster record", errorMessage instanceof Error ? errorMessage : undefined, {
@@ -126,4 +127,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

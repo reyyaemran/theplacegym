@@ -21,6 +21,7 @@ import {
 import { Staff, StaffDepartment, StaffStatus } from "@/types/staff";
 import { Appointment } from "@/types/appointment";
 import { calculateStaffMetrics } from "./utils/calculate-staff-metrics";
+import { isRecordAssignedToStaff } from "@/lib/staff-assignment";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePTPackageRecords } from "@/hooks/use-pt-package-records";
 import { useMembershipRecords } from "@/hooks/use-membership-records";
@@ -321,11 +322,11 @@ export function StaffDetailPage({
   ) : [];
   
   const trainerPTRecords = displayStaff ? ptPackageRecords.filter(
-    (record) => record.assignedStaffName === displayStaff.name
+    (record) => isRecordAssignedToStaff(record, displayStaff)
   ) : [];
   
   const fcMembershipRecords = displayStaff ? membershipRecords.filter(
-    (record) => record.assignedStaffName === displayStaff.name
+    (record) => isRecordAssignedToStaff(record, displayStaff)
   ) : [];
 
   // CC/CCS Issued Records - filter by issuedBy
@@ -333,7 +334,7 @@ export function StaffDetailPage({
     (record) => record.issuedBy === displayStaff.name
   ) : [];
   const ccIssuedPTPackageRecords = displayStaff ? ptPackageRecords.filter(
-    (record) => record.issuedBy === displayStaff.name
+    (record) => (record.issuedBy ?? "").toLowerCase() === (displayStaff.name ?? "").toLowerCase()
   ) : [];
   
   // All useMemo hooks must be called unconditionally - BEFORE early returns
@@ -629,12 +630,12 @@ export function StaffDetailPage({
   const activeClients = displayStaff ? (() => {
     if (displayStaff.department === "PT" || displayStaff.department === "PTS") {
       const trainerPTRecords = ptPackageRecords.filter(
-        (record) => record.assignedStaffName === displayStaff.name
+        (record) => isRecordAssignedToStaff(record, displayStaff)
       );
       return trainerPTRecords.length;
     } else if (displayStaff.department === "FC" || displayStaff.department === "FCS") {
       const fcMembershipRecords = membershipRecords.filter(
-        (record) => record.assignedStaffName === displayStaff.name
+        (record) => isRecordAssignedToStaff(record, displayStaff)
       );
       return fcMembershipRecords.filter(record => {
         const expiry = new Date(record.expiryDate);
@@ -661,7 +662,7 @@ export function StaffDetailPage({
   if (displayStaff) {
     if (displayStaff.department === "PT" || displayStaff.department === "PTS") {
       const trainerPTRecords = ptPackageRecords.filter(
-        (record) => record.assignedStaffName === displayStaff.name
+        (record) => isRecordAssignedToStaff(record, displayStaff)
       );
       trainerPTRecords.forEach(record => {
         if (record.paymentDate) {
@@ -670,7 +671,7 @@ export function StaffDetailPage({
       });
     } else if (displayStaff.department === "FC" || displayStaff.department === "FCS") {
       const fcMembershipRecords = membershipRecords.filter(
-        (record) => record.assignedStaffName === displayStaff.name
+        (record) => isRecordAssignedToStaff(record, displayStaff)
       );
       fcMembershipRecords.forEach(record => {
         if (record.paymentDate) {
@@ -699,7 +700,7 @@ export function StaffDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">
+          <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">
             Profile
           </h1>
         </div>
@@ -740,8 +741,7 @@ export function StaffDetailPage({
               <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
                 <AvatarImage src={displayStaff.avatar} alt={displayStaff.name} />
                 <AvatarFallback 
-                  className="text-2xl font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" 
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                  className="text-2xl font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat"
                 >
                   {getInitials(displayStaff.name)}
                 </AvatarFallback>
@@ -749,7 +749,7 @@ export function StaffDetailPage({
 
               {/* Name and Title */}
               <div className="space-y-1">
-                <h2 className="text-xl font-black italic tracking-tight uppercase font-montserrat">{displayStaff.name}</h2>
+                <h2 className="text-xl font-black tracking-tight uppercase font-montserrat">{displayStaff.name}</h2>
                 <p className="text-sm text-muted-foreground">
                   {getDepartmentLabel(displayStaff.department)}
                   {displayStaff.level && ` • ${displayStaff.level}`}
@@ -820,7 +820,7 @@ export function StaffDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {displayStaff.department === "PT" || displayStaff.department === "PTS" 
                     ? metrics.conduct 
                     : (displayStaff.department === "FC" || displayStaff.department === "FCS")
@@ -856,15 +856,8 @@ export function StaffDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
-                  {displayStaff.department === "PT" || displayStaff.department === "PTS"
-                    ? (() => {
-                        const trainerPTRecords = ptPackageRecords.filter(
-                          (record) => record.assignedStaffName === displayStaff.name
-                        );
-                        return trainerPTRecords.length > 0 ? trainerPTRecords.length.toLocaleString() : "0";
-                      })()
-                    : activeClients > 0 ? activeClients.toLocaleString() : "0"}
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
+                  {activeClients > 0 ? activeClients.toLocaleString() : "0"}
                 </div>
               </CardContent>
             </Card>
@@ -888,7 +881,7 @@ export function StaffDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {displayStaff.monthlySaleTarget !== undefined
                     ? `${metrics.salesPercent.toFixed(0)}%`
                     : (() => {
@@ -1092,7 +1085,7 @@ export function StaffDetailPage({
                     </CardHeader>
                     <CardContent className="flex-1">
                       {/* Leave Stats with Ring Indicators */}
-                      <div className="grid grid-cols-4 gap-2 mb-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
                         {/* Annual Leave */}
                         <div className="flex flex-col items-center gap-2">
                           <RingIndicator 
@@ -1158,7 +1151,7 @@ export function StaffDetailPage({
                       {(displayStaff.monthlySaleTarget !== undefined || displayStaff.monthlyConductTarget !== undefined || displayStaff.commissionPercentage !== undefined) && (
                         <div className="space-y-3 border-t pt-4">
                           <p className="text-xs font-semibold text-muted-foreground">Performance Targets</p>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {displayStaff.monthlySaleTarget !== undefined && (
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Sale Target</p>
@@ -1342,15 +1335,15 @@ export function StaffDetailPage({
                                 margin-top: -2px;
                                 padding-left: 0.6em;
                               }
-                              h1 {
-                                text-align: center;
-                                margin-bottom: 20px;
-                                font-family: 'Montserrat', sans-serif;
-                                font-weight: 900;
-                                font-style: italic;
-                                font-size: 24px;
-                                text-transform: uppercase;
-                              }
+                                    h1 {
+                                      text-align: center;
+                                      margin-bottom: 20px;
+                                      font-family: 'Montserrat', sans-serif;
+                                      font-weight: 900;
+                                      font-style: normal;
+                                      font-size: 24px;
+                                      text-transform: uppercase;
+                                    }
                               .info {
                                 margin-bottom: 15px;
                                 font-size: 11px;
@@ -1653,7 +1646,7 @@ function StaffDocumentsSection({ staff }: { staff: Staff }) {
 
       {/* Document View Dialog */}
       <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="w-full max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{selectedDocument?.name}</DialogTitle>
             <DialogDescription>

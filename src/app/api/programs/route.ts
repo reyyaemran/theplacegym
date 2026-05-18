@@ -4,6 +4,13 @@ import { WorkoutProgram } from "@/features/dashboard/pages/program/types/workout
 import { logger } from "@/lib/logger";
 import { workoutProgramSchema } from "@/lib/validations/workout-program";
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 function toProgram(doc: any): WorkoutProgram {
   const id = doc._id?.toString?.() ?? doc.id;
   return {
@@ -15,29 +22,19 @@ function toProgram(doc: any): WorkoutProgram {
 
 export async function GET(request: NextRequest) {
   try {
-    let programs: WorkoutProgram[] = [];
-
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("workout-programs");
-
-      const raw = await collection.find({}).sort({ createdAt: -1 }).toArray();
-      programs = raw.map(toProgram);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (
-        errorMessage.includes("MONGODB_URI") ||
-        errorMessage.includes("MongoClient") ||
-        errorMessage.includes("connection")
-      ) {
-        logger.info(
-          "Using mock mode for workout programs (MongoDB not configured or connection failed)"
-        );
-        programs = [];
-      } else {
-        throw error;
-      }
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("programs GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("workout-programs");
+
+    const raw = await collection.find({}).sort({ createdAt: -1 }).toArray();
+    const programs = raw.map(toProgram);
 
     return NextResponse.json(programs);
   } catch (error: unknown) {
@@ -79,31 +76,22 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("workout-programs");
-
-      const result = await collection.insertOne(doc as any);
-      const id = result.insertedId.toString();
-
-      return NextResponse.json(toProgram({ ...doc, _id: result.insertedId }), {
-        status: 201,
-      });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (
-        errorMessage.includes("MONGODB_URI") ||
-        errorMessage.includes("MongoClient") ||
-        errorMessage.includes("connection")
-      ) {
-        logger.info("MongoDB not available for workout program creation");
-        return NextResponse.json(
-          { error: "Database not available. Please configure MongoDB." },
-          { status: 503 }
-        );
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("programs POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("workout-programs");
+
+    const result = await collection.insertOne(doc as any);
+
+    return NextResponse.json(toProgram({ ...doc, _id: result.insertedId }), {
+      status: 201,
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(

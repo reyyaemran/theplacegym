@@ -45,6 +45,8 @@ type Props = {
     url: string;
     icon: LucideIcon;
     requiredPermission?: StaffPermission;
+    hideForDepartments?: string[];
+    showOnlyForDepartments?: string[];
     items?: {
       title: string;
       url: string;
@@ -69,22 +71,27 @@ export function SidebarMenuWrapper({ item }: Props) {
   const isSubmenuActive = item.items?.some((item) => item.isActive);
   const isPopover = state === "collapsed" && !isMobile;
 
-  // Check permission
-  // For appointments, program (workout + meal): allow PT/PTS and FC (trainers + nutritionists)
-  const isAppointmentsPage = item.url === "/dashboard/appointments";
-  const isProgramPage = item.url === "/dashboard/program";
-  const isPTorPTS = staff?.department === "PT" || staff?.department === "PTS";
-  const isFC = staff?.department === "FC" || staff?.department === "FCS";
-  const canAccessPlanners = isPTorPTS || isFC;
-  
+  // Department-based visibility: hide this item for certain departments
+  if (item.hideForDepartments?.length && staff?.department) {
+    if (item.hideForDepartments.includes(staff.department)) {
+      return null;
+    }
+  }
+
+  // Department-based visibility: show this item strictly for certain departments only
+  // Even admins don't see these — admins have their own combined view (e.g. tabs)
+  if (item.showOnlyForDepartments?.length) {
+    if (!staff?.department || !item.showOnlyForDepartments.includes(staff.department)) {
+      return null;
+    }
+  }
+
+  // Permission check
   const hasPermission = 
     !item.requiredPermission || 
     isAdmin || 
-    (isAppointmentsPage && isPTorPTS) || // Allow PT/PTS to access appointments
-    (isProgramPage && canAccessPlanners) || // Allow trainers + nutritionists for program & meal planner
     (staff?.permissions?.includes(item.requiredPermission));
 
-  // If no permission, return null to hide the item
   if (!hasPermission) {
     return null;
   }

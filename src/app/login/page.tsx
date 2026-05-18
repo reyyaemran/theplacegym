@@ -5,16 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -25,27 +19,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-
-const ADMIN_EMAIL = "theplaceadmin@theplace.com.kh";
+import { FocusMissionPanel } from "@/components/login/focus-mission-panel";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  staffID: z.string().optional(),
-  password: z.string().optional(),
-}).refine(
-  (data) => {
-    const isAdmin = data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    if (isAdmin) {
-      return !!data.password && data.password.length > 0;
-    } else {
-      return !!data.staffID && data.staffID.length > 0;
-    }
-  },
-  {
-    message: "Please provide Staff ID or Password",
-    path: ["staffID"],
-  }
-);
+  password: z.string().min(1, "Password is required"),
+});
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -55,89 +34,73 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check if user is already logged in
   useEffect(() => {
     async function checkAuth() {
       try {
         const response = await fetch("/api/auth/session");
         const data = await response.json();
-
         if (data.authenticated) {
-          const redirect = searchParams.get("redirect") || "/dashboard";
-          router.push(redirect);
+          router.push(searchParams.get("redirect") || "/dashboard");
         }
-      } catch (error) {
-        console.error("Auth check error:", error);
+      } catch {
+        // ignore
       } finally {
         setIsCheckingAuth(false);
       }
     }
-
     checkAuth();
   }, [router, searchParams]);
 
-  const [isAdminEmail, setIsAdminEmail] = useState(false);
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      staffID: "",
-      password: "",
-    },
+    mode: "onChange",
+    defaultValues: { email: "", password: "" },
   });
 
-  const emailValue = form.watch("email");
+  const formValid = form.formState.isValid;
 
-  // Detect if admin email is entered
   useEffect(() => {
-    const normalizedEmail = emailValue?.toLowerCase().trim();
-    const isAdmin = normalizedEmail === ADMIN_EMAIL.toLowerCase();
-    setIsAdminEmail(isAdmin);
-    
-    // Clear the other field when switching
-    if (isAdmin) {
-      form.setValue("staffID", "");
-    } else {
-      form.setValue("password", "");
-    }
-  }, [emailValue, form]);
+    if (formValid) router.prefetch("/dashboard");
+  }, [formValid, router]);
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true);
-
     try {
-      // Prepare request body based on login type
-      const requestBody = isAdminEmail
-        ? { email: data.email, password: data.password }
-        : { email: data.email, staffID: data.staffID };
-
-      const response = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+        credentials: "same-origin",
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast.error(result.error || "Login failed. Please check your credentials.");
+      if (!res.ok) {
+        let errMsg = "Login failed. Please check your credentials.";
+        try {
+          const errData = await res.json();
+          if (errData?.error) errMsg = errData.error;
+        } catch {
+          /* ignore */
+        }
+        toast.error(errMsg);
         return;
       }
 
-      toast.success(`Welcome back, ${result.staff.name}!`);
-      
-      // Trigger auth refresh event to update all components
-      window.dispatchEvent(new Event('auth-refresh'));
-      
-      const redirect = searchParams.get("redirect") || "/dashboard";
-      router.push(redirect);
+      const result = await res.json();
+      toast.success(`Welcome back, ${result.staff?.name ?? "User"}!`);
+      window.dispatchEvent(new Event("auth-refresh"));
+
+      router.push(searchParams.get("redirect") || "/dashboard");
       router.refresh();
     } catch (error) {
-      toast.error("An error occurred. Please try again.");
-      console.error("Login error:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        msg.includes("fetch") || msg.includes("Network")
+          ? "Connection error. Please check your network and try again."
+          : "An error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -152,39 +115,56 @@ function LoginPageContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>
-            {isAdminEmail
-              ? "Enter your email and password to access your account"
-              : "Enter your email and Staff ID to access your account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="name@example.com"
-                        autoComplete="email"
-                        disabled={isLoading}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {isAdminEmail ? (
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex justify-center gap-2 md:justify-start">
+          <Link
+            href="/"
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            aria-label="Go to home"
+          >
+            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-montserrat">
+              <span className="text-sm font-black italic leading-none w-full text-center">
+                TP
+              </span>
+            </div>
+            <div className="flex flex-1 flex-col text-left">
+              <span className="font-montserrat text-base font-black italic tracking-wide leading-none">
+                THE
+              </span>
+              <span className="font-montserrat text-base font-black italic tracking-wide pl-[0.6em] leading-none -mt-1">
+                PLACE
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-xs space-y-6">
+            <h1 className="text-2xl font-bold">Welcome back</h1>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="name@example.com"
+                          autoComplete="email"
+                          disabled={isLoading}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="password"
@@ -194,7 +174,7 @@ function LoginPageContent() {
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Enter your password"
+                          placeholder="••••••••"
                           autoComplete="current-password"
                           disabled={isLoading}
                           {...field}
@@ -204,46 +184,30 @@ function LoginPageContent() {
                     </FormItem>
                   )}
                 />
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="staffID"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Staff ID</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="Enter your Staff ID"
-                          autoComplete="off"
-                          disabled={isLoading}
-                          className="font-mono"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign in"
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+
+                <div className="flex justify-center">
+                  <Button
+                    type="submit"
+                    className="w-auto min-w-24 px-8"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      "Sign in"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </div>
+      </div>
+
+      <FocusMissionPanel />
     </div>
   );
 }
@@ -254,7 +218,9 @@ function LoginFallback() {
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
   );
-}export default function LoginPage() {
+}
+
+export default function LoginPage() {
   return (
     <Suspense fallback={<LoginFallback />}>
       <LoginPageContent />

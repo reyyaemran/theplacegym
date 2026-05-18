@@ -1,4 +1,9 @@
-# Database Reset Script
+# Database scripts (MongoDB — no Prisma)
+
+This app uses **MongoDB** directly (`src/lib/mongodb.ts`). Collections include:
+`staff`, `members`, `appointments`, `pt-packages`, `memberships`, `roster`, `leave-requests`, `staff-notes`, `programs`, `meal-plans`, and package type collections.
+
+## Reset database
 
 This script resets your MongoDB database and keeps only the super admin user.
 

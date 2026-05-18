@@ -3,11 +3,9 @@
 // External dependencies
 import * as React from "react";
 import Link from "next/link";
-import { Zap } from "lucide-react";
 
 // Internal components
 import { NavMain } from "@/features/dashboard/components/sidebar/nav-main";
-import { NavWorkspace } from "@/features/dashboard/components/sidebar/nav-workspace";
 import { NavSecondary } from "@/features/dashboard/components/sidebar/nav-secondary";
 import { NavUser } from "@/features/dashboard/components/sidebar/nav-user";
 import {
@@ -44,7 +42,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ? {
         name: staff.name,
         email: staff.email || "",
-        avatar: "/avatars/avatar.png",
+        avatar: (staff as { avatar?: string }).avatar || "",
         isAdmin: isAdmin,
       }
     : { ...sidebarMenus.user, isAdmin: false };
@@ -69,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-montserrat"
                   aria-hidden="true"
                 >
-                  <span className="text-sm font-black italic leading-none self-center">TP</span>
+                  <span className="text-sm font-black italic leading-none w-full text-center">TP</span>
                 </div>
                 <div className="flex flex-1 flex-col text-left">
                   <span className="font-montserrat text-base font-black italic tracking-wide leading-none">THE</span>
@@ -82,7 +80,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={sidebarMenus.navMain} />
-        <NavWorkspace workspaces={sidebarMenus.workspaces} />
         <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

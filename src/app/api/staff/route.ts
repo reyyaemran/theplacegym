@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
-import { Staff, StaffPermission } from "@/types/staff";
-import { mockStaff } from "@/lib/mock-data";
+import { Staff, StaffPermission, DEFAULT_PERMISSIONS_BY_DEPARTMENT } from "@/types/staff";
 import { logger } from "@/lib/logger";
 import { staffSchema } from "@/lib/validations/staff";
+import { hashPassword } from "@/lib/password";
 
 interface StaffQuery {
   department?: string;
@@ -11,53 +11,42 @@ interface StaffQuery {
   status?: string;
 }
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
-    // Try to use MongoDB if available, otherwise use mock data
-    let staff: Staff[] = [];
-    
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("staff");
-      
-      const searchParams = request.nextUrl.searchParams;
-      const department = searchParams.get("department");
-      const level = searchParams.get("level");
-      const status = searchParams.get("status");
-      
-      const query: StaffQuery = {};
-      if (department) query.department = department;
-      if (level) query.level = level;
-      if (status) query.status = status;
-      
-      staff = await collection.find(query as any).sort({ name: 1 }).toArray() as unknown as Staff[];
+      db = await getDatabase();
     } catch (error: unknown) {
-      // If MongoDB is not configured, use mock data
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        logger.info("Using mock staff data (MongoDB not configured)");
-        staff = [...mockStaff];
-        
-        // Apply filters to mock data
-        const searchParams = request.nextUrl.searchParams;
-        const department = searchParams.get("department");
-        const level = searchParams.get("level");
-        const status = searchParams.get("status");
-        
-        if (department) {
-          staff = staff.filter((s) => s.department === department);
-        }
-        if (level) {
-          staff = staff.filter((s) => s.level === level);
-        }
-        if (status) {
-          staff = staff.filter((s) => s.status === status);
-        }
-      } else {
-        throw error;
-      }
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("staff GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
-    
+
+    const collection = db.collection("staff");
+
+    const searchParams = request.nextUrl.searchParams;
+    const department = searchParams.get("department");
+    const level = searchParams.get("level");
+    const status = searchParams.get("status");
+
+    const query: StaffQuery = {};
+    if (department) query.department = department;
+    if (level) query.level = level;
+    if (status) query.status = status;
+
+    const rawStaff = await collection.find(query as any).sort({ name: 1 }).toArray();
+    const staff = rawStaff.map((s: any) => ({
+      ...s,
+      _id: s._id?.toString(),
+    })) as Staff[];
+
     return NextResponse.json(staff);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
@@ -76,9 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate request body with Zod
     const validationResult = staffSchema.safeParse(body);
-
     if (!validationResult.success) {
       logger.warn("Invalid staff data submitted", {
         errors: validationResult.error.errors,
@@ -93,26 +80,33 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedData = validationResult.data;
-    
+
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("staff POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
+    const collection = db.collection("staff");
+
     // Process staffID: enforce 6-digit numeric format
     let staffID = validatedData.staffID;
-    
+
     if (staffID) {
-      // Remove any whitespace
       staffID = staffID.trim();
-      
-      // Validate that it's numeric only
+
       if (!/^\d+$/.test(staffID)) {
         return NextResponse.json(
           { error: "Staff ID must be numeric only" },
           { status: 400 }
         );
       }
-      
-      // Pad to 6 digits with leading zeros
+
       staffID = staffID.padStart(6, "0");
-      
-      // Ensure it doesn't exceed 6 digits
+
       if (staffID.length > 6) {
         return NextResponse.json(
           { error: "Staff ID must be 6 digits or less" },
@@ -120,38 +114,18 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Auto-generate a 6-digit number if not provided
-      // Try to find a unique ID (max 10 attempts)
+      // Auto-generate unique 6-digit staff ID
       let attempts = 0;
       let isUnique = false;
-      
-      try {
-        const db = await getDatabase();
-        const collection = db.collection("staff");
-        
-        while (!isUnique && attempts < 10) {
-          const randomNum = Math.floor(100000 + Math.random() * 900000);
-          staffID = randomNum.toString().padStart(6, "0");
-          
-          // Check if this staffID already exists
-          const existing = await collection.findOne({ staffID } as any);
-          if (!existing) {
-            isUnique = true;
-          }
-          attempts++;
-        }
-      } catch (dbError: unknown) {
-        // If MongoDB is not available, just generate a random ID (mock mode)
-        const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-        if (errorMessage.includes("MONGODB_URI")) {
-          const randomNum = Math.floor(100000 + Math.random() * 900000);
-          staffID = randomNum.toString().padStart(6, "0");
-          isUnique = true;
-        } else {
-          throw dbError;
-        }
+
+      while (!isUnique && attempts < 10) {
+        const randomNum = Math.floor(100000 + Math.random() * 900000);
+        staffID = randomNum.toString().padStart(6, "0");
+        const existing = await collection.findOne({ staffID } as any);
+        if (!existing) isUnique = true;
+        attempts++;
       }
-      
+
       if (!isUnique) {
         return NextResponse.json(
           { error: "Failed to generate unique staff ID. Please try again." },
@@ -159,79 +133,60 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
-    // Check for uniqueness before inserting (if staffID was provided)
+
+    // Uniqueness check for user-provided staffID
     if (validatedData.staffID) {
-      try {
-        const db = await getDatabase();
-        const collection = db.collection("staff");
-        const existing = await collection.findOne({ staffID } as any);
-        if (existing) {
-          return NextResponse.json(
-            { error: "Staff ID already exists" },
-            { status: 400 }
-          );
-        }
-      } catch (dbError: unknown) {
-        // If MongoDB is not available, skip uniqueness check (mock mode)
-        const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-        if (!errorMessage.includes("MONGODB_URI")) {
-          throw dbError;
-        }
+      const existing = await collection.findOne({ staffID } as any);
+      if (existing) {
+        return NextResponse.json(
+          { error: "Staff ID already exists" },
+          { status: 400 }
+        );
       }
     }
 
-    // Cast validatedData.permissions to StaffPermission[] | undefined
-    const permissions = validatedData.permissions as StaffPermission[] | undefined;
+    const explicitPermissions = validatedData.permissions as StaffPermission[] | undefined;
+    const permissions =
+      explicitPermissions && explicitPermissions.length > 0
+        ? explicitPermissions
+        : DEFAULT_PERMISSIONS_BY_DEPARTMENT[validatedData.department] || ["view_dashboard"];
+
+    // Hash password if provided
+    const hashedPassword = validatedData.password
+      ? hashPassword(validatedData.password)
+      : validatedData.password;
 
     const staff: Omit<Staff, "_id" | "createdAt" | "updatedAt"> = {
       ...validatedData,
-      staffID, // Use the generated or provided staffID
+      password: hashedPassword,
+      staffID,
       permissions,
+      loginEnabled: validatedData.loginEnabled ?? true,
+      role: validatedData.role || "STAFF",
       hireDate: validatedData.hireDate,
       dateOfBirth: validatedData.dateOfBirth,
     };
-    
-    // Try MongoDB first, otherwise just return the data (mock mode)
-    try {
-      const db = await getDatabase();
-      const collection = db.collection("staff");
-      const staffWithTimestamps: Omit<Staff, "_id"> = {
-        ...staff,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const result = await collection.insertOne(
-        staffWithTimestamps as any
-      );
-      const createdStaff: Staff = {
-        _id: result.insertedId.toString(),
-        ...staffWithTimestamps,
-      };
-      return NextResponse.json(createdStaff, { status: 201 });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        // Mock mode - just return with generated ID
-        logger.info("Using mock mode for staff creation");
-        const mockStaff: Staff = {
-          _id: Date.now().toString(),
-          ...staff,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        return NextResponse.json(mockStaff, { status: 201 });
-      }
-      throw error;
-    }
+
+    const staffWithTimestamps: Omit<Staff, "_id"> = {
+      ...staff,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await collection.insertOne(staffWithTimestamps as any);
+    const createdStaff: Staff = {
+      _id: result.insertedId.toString(),
+      ...staffWithTimestamps,
+    };
+    return NextResponse.json(createdStaff, { status: 201 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
       "Error creating staff",
       errorMessage instanceof Error ? errorMessage : undefined,
       {
-      endpoint: "/api/staff",
-      method: "POST",
+        endpoint: "/api/staff",
+        method: "POST",
       }
     );
     return NextResponse.json(

@@ -100,7 +100,6 @@ const BalanceRingIndicator = ({
       {/* Balance number in center */}
       <span
         className="absolute font-mono font-black text-sm text-foreground"
-        style={{ fontFamily: 'Montserrat, sans-serif' }}
       >
         {balance}
       </span>
@@ -252,7 +251,7 @@ export function TrainerPTRecordsTable({
           const record = row.original;
           return (
             <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-              <span className="uppercase italic font-black text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="uppercase font-black text-foreground" >
                 {record.ptPackageName}
               </span>
             </Badge>
@@ -265,14 +264,26 @@ export function TrainerPTRecordsTable({
         cell: ({ row }) => {
           const record = row.original;
           const totalSessions = record.ptPackageSessions || 0;
-          
-          // Calculate used sessions from completed appointments
-          const usedSessions = appointments.filter(
-            (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
-          ).length;
-          
-          const balanceSessions = Math.max(0, totalSessions - usedSessions);
-          
+          const importedRemaining = record.remainingSessions;
+          const importedUsed = record.usedSessions;
+          const hasImportedSessions =
+            importedRemaining != null &&
+            !isNaN(importedRemaining) &&
+            importedRemaining >= 0 &&
+            importedUsed != null &&
+            !isNaN(importedUsed) &&
+            importedUsed >= 0;
+
+          const balanceSessions = hasImportedSessions
+            ? importedRemaining
+            : Math.max(
+                0,
+                totalSessions -
+                  appointments.filter(
+                    (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
+                  ).length
+              );
+
           return (
             <div className="flex items-center justify-center h-full">
               <BalanceRingIndicator
@@ -305,7 +316,7 @@ export function TrainerPTRecordsTable({
         cell: ({ row }) => {
           const record = row.original;
           return (
-            <span className="font-mono font-bold italic text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span className="font-mono font-bold italic text-sm" >
               ${record.amount.toFixed(2)}
             </span>
           );
@@ -329,13 +340,25 @@ export function TrainerPTRecordsTable({
         cell: ({ row }) => {
           const record = row.original;
           const totalSessions = record.ptPackageSessions || 0;
-          
-          // Calculate used sessions from completed appointments
-          const usedSessions = appointments.filter(
-            (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
-          ).length;
-          
-          const balanceSessions = Math.max(0, totalSessions - usedSessions);
+          const importedRemaining = record.remainingSessions;
+          const importedUsed = record.usedSessions;
+          const hasImportedSessions =
+            importedRemaining != null &&
+            !isNaN(importedRemaining) &&
+            importedRemaining >= 0 &&
+            importedUsed != null &&
+            !isNaN(importedUsed) &&
+            importedUsed >= 0;
+
+          const balanceSessions = hasImportedSessions
+            ? importedRemaining
+            : Math.max(
+                0,
+                totalSessions -
+                  appointments.filter(
+                    (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
+                  ).length
+              );
           
           // Calculate status
           const status = getPackageStatus(record, appointments, totalSessions, balanceSessions);

@@ -180,7 +180,13 @@ interface MemberFormDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   member?: Member | null;
-  onSave: (data: Omit<Member, "id">) => void;
+  /**
+   * Optional post-save hook. The drawer already handles the API write itself
+   * (createMemberMutation / updateMemberMutation). This callback fires with
+   * the saved member data after the mutation resolves, so the parent can
+   * react (e.g. optimistic UI, analytics).
+   */
+  onSave?: (data: Omit<Member, "id">) => void;
 }
 
 const STEPS = [
@@ -554,7 +560,10 @@ export function MemberFormDrawer({
         queryClient.refetchQueries({ queryKey: ["members"] }),
       ]);
 
-      // Success toast is handled by the mutation hooks
+      // Success toast is handled by the mutation hooks.
+      // Notify parent so it can run any post-save logic.
+      onSave?.(memberData);
+
       onOpenChange(false);
       form.reset();
       setCurrentStep(1);
@@ -613,7 +622,7 @@ export function MemberFormDrawer({
                 {/* Step 1: Information */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="issuedBy"
@@ -638,7 +647,7 @@ export function MemberFormDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-[350px] p-0" align="start">
+                              <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                                 <Command>
                                   <CommandInput placeholder="Search staff..." />
                                   <CommandList className="max-h-[200px] overflow-y-auto">
@@ -655,8 +664,8 @@ export function MemberFormDrawer({
                                             className="flex items-center gap-3 pr-8 relative"
                                           >
                                             <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                              <AvatarImage src="" />
-                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                              <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                                 {getInitials(staff.name)}
                                               </AvatarFallback>
                                             </Avatar>
@@ -684,7 +693,7 @@ export function MemberFormDrawer({
 
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="memberNumber"
@@ -694,7 +703,7 @@ export function MemberFormDrawer({
                             <FormControl>
                               <Input
                                 placeholder="Auto-generated"
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                               />
                             </FormControl>
@@ -711,8 +720,8 @@ export function MemberFormDrawer({
                             <FormLabel>Full Name *</FormLabel>
                             <FormControl>
                               <Input 
-                                placeholder="Full name" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                placeholder="Name" 
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -722,7 +731,7 @@ export function MemberFormDrawer({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="email"
@@ -733,7 +742,7 @@ export function MemberFormDrawer({
                               <Input 
                                 type="email" 
                                 placeholder="Email" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -751,7 +760,7 @@ export function MemberFormDrawer({
                             <FormControl>
                               <Input 
                                 placeholder="Phone" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -761,7 +770,7 @@ export function MemberFormDrawer({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="address"
@@ -771,7 +780,7 @@ export function MemberFormDrawer({
                             <FormControl>
                               <Textarea 
                                 placeholder="Address" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -805,7 +814,7 @@ export function MemberFormDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
@@ -827,7 +836,7 @@ export function MemberFormDrawer({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="emergencyPhone"
@@ -837,7 +846,7 @@ export function MemberFormDrawer({
                             <FormControl>
                               <Input 
                                 placeholder="Phone" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -854,8 +863,8 @@ export function MemberFormDrawer({
                             <FormLabel>Emergency Contact Name</FormLabel>
                             <FormControl>
                               <Input 
-                                placeholder="Contact name" 
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                placeholder="Contact" 
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field} 
                               />
                             </FormControl>
@@ -875,7 +884,7 @@ export function MemberFormDrawer({
                     </p>
                     
                     {/* Two Column Layout: Membership (Left) | PT Package (Right) */}
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {/* Left Column: Membership */}
                       <div className="space-y-4">
                         <h3 className="text-sm font-semibold text-foreground mb-2">Membership</h3>
@@ -906,7 +915,7 @@ export function MemberFormDrawer({
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[350px] p-0" align="start">
+                                <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                                   <Command>
                                     <CommandInput placeholder="Search FC/FCS..." />
                                     <CommandList className="max-h-[200px] overflow-y-auto">
@@ -923,8 +932,8 @@ export function MemberFormDrawer({
                                             className="flex items-center gap-3 pr-8 relative"
                                           >
                                             <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                              <AvatarImage src="" />
-                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                              <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                                 {getInitials(staff.name)}
                                               </AvatarFallback>
                                             </Avatar>
@@ -959,7 +968,7 @@ export function MemberFormDrawer({
                               <FormControl>
                                 <Input
                                   placeholder="Auto-generated"
-                                  className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                  className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                   {...field}
                                 />
                               </FormControl>
@@ -991,7 +1000,7 @@ export function MemberFormDrawer({
                                 >
                                   <FormControl>
                                     <SelectTrigger className="text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                      <SelectValue placeholder="Select membership type" />
+                                      <SelectValue placeholder="Membership" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent className="max-h-[200px]">
@@ -1016,8 +1025,7 @@ export function MemberFormDrawer({
                                             <div className="flex items-center gap-2 w-full">
                                               <Badge 
                                                 variant="outline" 
-                                                className="gap-1.5 border-muted bg-muted/50 text-sm font-black italic shrink-0"
-                                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                                className="gap-1.5 border-muted bg-muted/50 text-sm font-black shrink-0 font-montserrat"
                                               >
                                                 {getBadgeText()}
                                               </Badge>
@@ -1064,7 +1072,7 @@ export function MemberFormDrawer({
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                   <Calendar
                                     mode="single"
                                     selected={field.value}
@@ -1078,7 +1086,7 @@ export function MemberFormDrawer({
                           )}
                         />
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <FormField
                             control={form.control}
                             name="membershipPaymentType"
@@ -1091,7 +1099,7 @@ export function MemberFormDrawer({
                                 >
                                   <FormControl>
                                     <SelectTrigger className="text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                      <SelectValue placeholder="Select payment type" />
+                                      <SelectValue placeholder="Payment" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
@@ -1116,7 +1124,7 @@ export function MemberFormDrawer({
                                 <FormControl>
                                   <Input 
                                     placeholder="Remark" 
-                                    className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                    className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                     {...field} 
                                   />
                                 </FormControl>
@@ -1157,7 +1165,7 @@ export function MemberFormDrawer({
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[350px] p-0" align="start">
+                                <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                                   <Command>
                                     <CommandInput placeholder="Search trainers..." />
                                     <CommandList className="max-h-[200px] overflow-y-auto">
@@ -1174,8 +1182,8 @@ export function MemberFormDrawer({
                                             className="flex items-center gap-3 pr-8 relative"
                                           >
                                             <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                              <AvatarImage src="" />
-                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                              <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                              <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                                 {getInitials(staff.name)}
                                               </AvatarFallback>
                                             </Avatar>
@@ -1210,7 +1218,7 @@ export function MemberFormDrawer({
                               <FormControl>
                                 <Input
                                   placeholder="Auto-generated"
-                                  className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                  className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                   {...field}
                                 />
                               </FormControl>
@@ -1231,7 +1239,7 @@ export function MemberFormDrawer({
                               >
                                 <FormControl>
                                   <SelectTrigger className="text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                    <SelectValue placeholder="Select package" />
+                                    <SelectValue placeholder="Package" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="max-h-[300px]">
@@ -1241,8 +1249,7 @@ export function MemberFormDrawer({
                                         <div className="flex items-center gap-2 w-full">
                                           <Badge 
                                             variant="outline" 
-                                            className="gap-1.5 border-muted bg-muted/50 text-sm font-black italic"
-                                            style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                            className="gap-1.5 border-muted bg-muted/50 text-sm font-black font-montserrat"
                                           >
                                             {pkg.shortName}
                                           </Badge>
@@ -1290,7 +1297,7 @@ export function MemberFormDrawer({
                                     </Button>
                                   </FormControl>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                   <Calendar
                                     mode="single"
                                     selected={field.value}
@@ -1305,7 +1312,7 @@ export function MemberFormDrawer({
                         />
 
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <FormField
                             control={form.control}
                             name="ptPackagePaymentType"
@@ -1318,7 +1325,7 @@ export function MemberFormDrawer({
                                 >
                                   <FormControl>
                                     <SelectTrigger className="text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                      <SelectValue placeholder="Select payment type" />
+                                      <SelectValue placeholder="Payment" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
@@ -1343,7 +1350,7 @@ export function MemberFormDrawer({
                                 <FormControl>
                                   <Input 
                                     placeholder="Remark" 
-                                    className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                    className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                     {...field} 
                                   />
                                 </FormControl>
@@ -1393,7 +1400,7 @@ export function MemberFormDrawer({
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="weight"
@@ -1406,7 +1413,7 @@ export function MemberFormDrawer({
                               <Input
                                 type="number"
                                 placeholder={measurementSystem === "metric" ? "kg" : "lbs"}
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -1429,7 +1436,7 @@ export function MemberFormDrawer({
                               <Input
                                 type="number"
                                 placeholder={measurementSystem === "metric" ? "cm" : "ft/in"}
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                                 value={field.value || ""}
                                 onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -1441,7 +1448,7 @@ export function MemberFormDrawer({
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="bloodType"
@@ -1454,7 +1461,7 @@ export function MemberFormDrawer({
                             >
                               <FormControl>
                                 <SelectTrigger className="text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                  <SelectValue placeholder="Select blood type" />
+                                  <SelectValue placeholder="Blood type" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -1481,8 +1488,8 @@ export function MemberFormDrawer({
                             <FormLabel>Medicines</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Medicines (comma separated)"
-                                className="placeholder:text-xs placeholder:text-muted-foreground/60"
+                                placeholder="Medicines"
+                                className="placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                                 value={Array.isArray(field.value) ? field.value.join(", ") : field.value || ""}
                                 onChange={(e) => {

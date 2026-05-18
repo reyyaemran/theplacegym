@@ -179,7 +179,7 @@ export function FCMembershipRecordsTable({
           const record = row.original;
           return (
             <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-              <span className="uppercase italic font-black text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="uppercase font-black text-foreground font-montserrat">
                 {getMembershipTypeLabel(record.membershipType)}
               </span>
             </Badge>
@@ -229,7 +229,7 @@ export function FCMembershipRecordsTable({
         accessorKey: "amount",
         header: "Amount",
         cell: ({ row }) => (
-          <span className="font-mono font-bold italic text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <span className="font-montserrat font-bold text-sm">
             ${row.original.amount.toFixed(2)}
           </span>
         ),

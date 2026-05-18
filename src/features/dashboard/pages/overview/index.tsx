@@ -69,6 +69,7 @@ import {
   Label,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DashboardStats {
   availableStaff: number;
@@ -103,9 +104,12 @@ export function OverviewPage() {
   const { data: ptPackageRecords = [] } = usePTPackageRecords();
   const { data: membersData = [] } = useMembers();
   
+  // Use data directly from React Query (declare before availableStaff which depends on staff)
+  const staff = staffData || [];
+  const appointments = appointmentsData || [];
+
   // Initialize state
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<(Appointment & { dateTime: Date; displayStatus: "UPCOMING" | "IN_PROGRESS" | "COMPLETED" })[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const now = new Date();
@@ -115,9 +119,11 @@ export function OverviewPage() {
     };
   });
 
-  // Use data directly from React Query - no need for local state
-  const staff = staffData || [];
-  const appointments = appointmentsData || [];
+  // Derive available staff immediately from staff data (no waiting for effect)
+  const availableStaff = useMemo(
+    () => staff.filter((s: Staff) => s.status === "AVAILABLE"),
+    [staff]
+  );
 
   // Convert members to clients format using useMemo to prevent recreation
   const clients = useMemo(() => {
@@ -143,12 +149,6 @@ export function OverviewPage() {
       rangeStart.setHours(0, 0, 0, 0);
       const rangeEnd = new Date(dateRange.to);
       rangeEnd.setHours(23, 59, 59, 999);
-      
-      // Count all available staff (status = AVAILABLE)
-      // Keep showing all available staff for everyone
-      const availableStaffList = staff.filter((s: Staff) => {
-        return s.status === "AVAILABLE";
-      });
       
       // Calculate revenue from Membership Records
       const membershipRevenue = (membershipRecords || [])
@@ -237,12 +237,22 @@ export function OverviewPage() {
           // Exclude already expired packages
           if (expiry < now) return false;
           
-          // Calculate used sessions to check if package is finished
+          // Use imported remaining sessions when available
           const totalSessions = record.ptPackageSessions || 0;
-          const usedSessions = appointments.filter(
-            (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
-          ).length;
-          const balanceSessions = Math.max(0, totalSessions - usedSessions);
+          const importedRemaining = record.remainingSessions;
+          const hasImported =
+            importedRemaining != null &&
+            !isNaN(importedRemaining) &&
+            importedRemaining >= 0;
+          const balanceSessions = hasImported
+            ? importedRemaining
+            : Math.max(
+                0,
+                totalSessions -
+                  appointments.filter(
+                    (apt) => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
+                  ).length
+              );
           
           // Exclude packages with 0 balance (all sessions finished)
           if (balanceSessions === 0) return false;
@@ -345,14 +355,13 @@ export function OverviewPage() {
         });
 
       setStats({
-        availableStaff: availableStaffList.length,
+        availableStaff: availableStaff.length,
         totalRevenue,
         totalRevenueTarget,
         totalSessions,
         totalSessionsTarget,
         expiringSoon,
       });
-      setAvailableStaff(availableStaffList);
       setUpcomingAppointments(allAppointments);
     };
     
@@ -362,6 +371,7 @@ export function OverviewPage() {
     dateRange?.from?.getTime(),
     dateRange?.to?.getTime(),
     staffData.length,
+    availableStaff.length,
     appointmentsData.length,
     membersData.length,
     membershipRecords.length,
@@ -642,14 +652,14 @@ export function OverviewPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-black italic tracking-tight uppercase text-foreground font-montserrat">
+          <h1 className="text-3xl font-black tracking-tight uppercase text-foreground font-montserrat">
             Hello, {currentStaff?.name || "User"}
           </h1>
         </div>
         <DatePickerWithRange
           value={dateRange}
           onChange={setDateRange}
-          className="w-full sm:w-auto"
+          className="w-full min-w-0 sm:w-fit sm:shrink-0"
         />
       </div>
 
@@ -663,25 +673,39 @@ export function OverviewPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-2xl font-bold font-mono text-foreground">
-              {stats?.availableStaff || 0}
-            </div>
+            {staffLoading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <div className="text-2xl font-bold font-mono text-foreground tabular-nums">
+                {stats?.availableStaff ?? availableStaff.length ?? 0}
+              </div>
+            )}
             <div className="flex -space-x-2">
-              {availableStaff.slice(0, 5).map((staffMember) => (
-                <Avatar key={staffMember._id} className="border-2 border-background h-8 w-8 shadow-sm">
-                  <AvatarImage src="" />
-                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                    {getInitials(staffMember.name)}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-              {availableStaff.length > 5 && (
-                <Avatar className="border-2 border-background h-8 w-8 shadow-sm">
-                  <AvatarImage src="" />
-                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/60 text-muted-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                    +{availableStaff.length - 5}
-                  </AvatarFallback>
-                </Avatar>
+              {staffLoading ? (
+                <>
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </>
+              ) : (
+                <>
+                  {availableStaff.slice(0, 5).map((staffMember) => (
+                    <Avatar key={staffMember._id} className="border-2 border-background h-8 w-8 shadow-sm">
+                      <AvatarImage src={staffMember.avatar || ""} alt={staffMember.name} />
+                      <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
+                        {getInitials(staffMember.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {availableStaff.length > 5 && (
+                    <Avatar className="border-2 border-background h-8 w-8 shadow-sm">
+                      <AvatarImage src="" />
+                      <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/60 text-muted-foreground font-montserrat">
+                        +{availableStaff.length - 5}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </>
               )}
             </div>
           </CardContent>
@@ -697,7 +721,7 @@ export function OverviewPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
-              <div className="text-2xl font-bold font-mono text-foreground">
+              <div className="text-2xl font-bold font-mono text-foreground tabular-nums">
                 ${(stats?.totalRevenue || 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground/70">
@@ -726,7 +750,7 @@ export function OverviewPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
-              <div className="text-2xl font-bold font-mono text-foreground">
+              <div className="text-2xl font-bold font-mono text-foreground tabular-nums">
                 {stats?.totalSessions || 0}
               </div>
               <p className="text-xs text-muted-foreground/70">
@@ -766,7 +790,7 @@ export function OverviewPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
-              <div className="text-2xl font-bold font-mono text-foreground">
+              <div className="text-2xl font-bold font-mono text-foreground tabular-nums">
                 {stats?.expiringSoon || 0}
               </div>
               <p className="text-xs text-muted-foreground/70">
@@ -941,7 +965,13 @@ export function OverviewPage() {
             <CardTitle className="text-foreground">Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            {topStaffByDepartment.length > 0 ? (
+            {staffLoading ? (
+              <div className="space-y-2.5">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : topStaffByDepartment.length > 0 ? (
               <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
                 {topStaffByDepartment.map((staffMember, index) => {
                   const staffData = staff.find((s) => String(s._id) === staffMember.staffId);

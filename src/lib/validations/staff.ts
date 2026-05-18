@@ -98,6 +98,7 @@ export const staffSchema = z.object({
   loginEnabled: z.boolean().optional(),
   role: z.enum(["ADMIN", "STAFF"]).optional(),
   permissions: z.array(z.string()).optional(),
+  password: z.string().min(1).optional(),
 });
 
 export type StaffFormInput = z.input<typeof staffSchema>;

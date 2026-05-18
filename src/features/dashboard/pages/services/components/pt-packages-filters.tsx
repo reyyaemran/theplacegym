@@ -43,7 +43,7 @@ export function PTPackagesFilters({
         onFocus={() => setIsSearchFocused(true)}
         onBlur={() => setIsSearchFocused(false)}
         className={cn(
-          "pl-9 h-8 text-xs transition-all duration-200 placeholder:text-xs",
+          "pl-9 h-8 text-xs transition-all duration-200 placeholder:text-sm",
           !isSearchFocused && !hasSearchValue && "pr-3"
         )}
       />

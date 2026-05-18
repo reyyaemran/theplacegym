@@ -16,6 +16,11 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
+// Google Sans Flex loaded via link to avoid Next.js font override warning (no metrics in next/font)
+const GOOGLE_SANS_FLEX_URL =
+  "https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&display=swap";
+
+
 export const metadata: Metadata = {
   title: "THE PLACE - PT Business Management",
   description:
@@ -29,7 +34,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${GeistMono.className} ${montserrat.variable} antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={GOOGLE_SANS_FLEX_URL} />
+      </head>
+      <body className={`font-sans ${montserrat.variable} ${GeistMono.variable} antialiased`}>
         <AuthProvider>
           <QueryProvider>
             <ThemeProvider

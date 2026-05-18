@@ -34,7 +34,7 @@ export function WorkoutPlannerForm({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Dumbbell className="h-5 w-5" />
-            <CardTitle className="text-lg font-black italic tracking-tight uppercase font-montserrat">
+            <CardTitle className="text-lg font-black tracking-tight uppercase font-montserrat">
               WORKOUT PLANNER
             </CardTitle>
           </div>
@@ -57,7 +57,7 @@ export function WorkoutPlannerForm({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-4 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-sm font-semibold uppercase">CLIENT</Label>
             <Input
@@ -144,7 +144,7 @@ export function WorkoutPlannerForm({
           <Textarea
             value={program.notesFeedback}
             onChange={(e) => onChange({ ...program, notesFeedback: e.target.value })}
-            placeholder="e.g. Knee injuries, shoulder pain, back issues – AI suggestions will adapt to avoid stressing these areas"
+            placeholder="e.g. Knee injury, back..."
             rows={4}
             className="resize-none"
           />

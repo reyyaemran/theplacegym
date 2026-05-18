@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Utilities
 import { cn } from "@/lib/utils";
@@ -51,8 +52,9 @@ export function DatePicker({
   id,
   name,
 }: DatePickerProps) {
-  // Format the selected date for display
-  const formattedDate = date ? format(date, "PPP") : undefined;
+  const isMobile = useIsMobile();
+  const dateFormat = isMobile ? "MMM d, y" : "PPP";
+  const formattedDate = date ? format(date, dateFormat) : undefined;
 
   const [open, setOpen] = useState(false);  
   
@@ -64,24 +66,24 @@ export function DatePicker({
           name={name}
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "rounded-full h-10 px-4 justify-start text-left font-normal w-full sm:w-auto sm:min-w-0 max-w-full",
             !date && "text-muted-foreground",
           )}
           aria-label="Choose date"
           aria-expanded="false"
           aria-haspopup="dialog"
         >
-          <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
           {formattedDate ? (
-            <span aria-live="polite">{formattedDate}</span>
+            <span className="truncate min-w-0" aria-live="polite">{formattedDate}</span>
           ) : (
-            <span className="text-muted-foreground">Pick a date</span>
+            <span className="text-muted-foreground truncate">Pick a date</span>
           )}
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-auto p-0"
+        className="w-auto p-0 max-w-[calc(100vw-2rem)]"
         role="dialog"
         aria-label="Calendar date picker"
       >
@@ -94,7 +96,6 @@ export function DatePicker({
           }}
           initialFocus
           fromDate={fromDate}
-          // Accessibility props
           aria-label="Select date"
           className="rounded-md border"
         />

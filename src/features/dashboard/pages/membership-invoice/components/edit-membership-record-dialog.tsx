@@ -151,13 +151,13 @@ export function EditMembershipRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Membership Record</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="membershipType"
@@ -170,7 +170,7 @@ export function EditMembershipRecordDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select membership type" />
+                          <SelectValue placeholder="Membership" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -206,7 +206,7 @@ export function EditMembershipRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -225,7 +225,7 @@ export function EditMembershipRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -257,7 +257,7 @@ export function EditMembershipRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -272,7 +272,7 @@ export function EditMembershipRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="paymentType"
@@ -282,7 +282,7 @@ export function EditMembershipRecordDialog({
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select payment type" />
+                          <SelectValue placeholder="Payment" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -316,7 +316,7 @@ export function EditMembershipRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -331,7 +331,7 @@ export function EditMembershipRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="assignedStaffName"
@@ -341,7 +341,7 @@ export function EditMembershipRecordDialog({
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select staff" />
+                          <SelectValue placeholder="Staff" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -367,7 +367,7 @@ export function EditMembershipRecordDialog({
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select staff" />
+                          <SelectValue placeholder="Staff" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -393,7 +393,7 @@ export function EditMembershipRecordDialog({
                   <FormLabel>Payment Remark</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Optional payment remark"
+                      placeholder="Remark"
                       {...field}
                     />
                   </FormControl>

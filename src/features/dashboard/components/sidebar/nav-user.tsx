@@ -3,13 +3,16 @@
 // External dependencies
 import {
   ChevronsUpDown,
+  KeyRound,
   LogOut,
   Shield,
   User,
 } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { ChangePasswordDialog } from "./change-password-dialog";
 
 // Internal components
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,7 +66,8 @@ export function NavUser({
 }) {
   const router = useRouter();
   const { isMobile } = useSidebar();
-  const { staff } = useAuth();
+  const { staff, isSuperAdmin } = useAuth();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   
   // Get the current staff ID for profile link
   // Session has staffId (camelCase), staff object might have _id
@@ -103,8 +107,8 @@ export function NavUser({
               aria-label="User profile and options"
             >
               <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
-                <AvatarImage src="" alt={`${user.name}'s profile`} />
-                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <AvatarImage src={user.avatar || ""} alt={`${user.name}'s profile`} />
+                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                   {getInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
@@ -129,10 +133,10 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
                   <AvatarImage
-                    src=""
+                    src={user.avatar || ""}
                     alt={`${user.name}'s profile`}
                   />
-                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                     {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
@@ -154,6 +158,12 @@ export function NavUser({
                   </Link>
                 </DropdownMenuItem>
               )}
+              {!isSuperAdmin && (
+                <DropdownMenuItem onClick={() => setChangePasswordOpen(true)} role="menuitem">
+                  <KeyRound aria-hidden="true" />
+                  Change Password
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => signOut()} role="menuitem">
@@ -162,6 +172,10 @@ export function NavUser({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ChangePasswordDialog
+          open={changePasswordOpen}
+          onOpenChange={setChangePasswordOpen}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   );

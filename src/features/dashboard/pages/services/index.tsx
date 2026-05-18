@@ -205,7 +205,7 @@ export function ServicesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">ALL PACKAGE</h1>
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">ALL PACKAGE</h1>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

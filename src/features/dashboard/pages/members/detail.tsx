@@ -76,6 +76,7 @@ import { useMembershipRecords } from "@/hooks/use-membership-records";
 import { usePTPackageRecords } from "@/hooks/use-pt-package-records";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useMemberById } from "@/hooks/use-members";
+import { useClientById } from "@/hooks/use-clients";
 import { useClearPackageRecords } from "@/hooks/use-clear-package-records";
 import { Appointment } from "@/types/appointment";
 import { toast } from "sonner";
@@ -87,22 +88,29 @@ import { useUpdateMember } from "@/hooks/use-members";
 
 export function MemberDetailPage({
   params,
+  basePath = "/dashboard/members",
 }: {
   params: Promise<{ id: string }>;
+  basePath?: string;
 }) {
   const { id } = use(params);
   const router = useRouter();
-  
-  // Fetch member data from API (supports both ID and memberNumber)
-  const { data: member, isLoading: memberLoading, error: memberError } = useMemberById(id);
+  const isClientMode = basePath === "/dashboard/active-clients";
+
+  // Fetch member data - use clients API for active-clients (verifies trainer assignment)
+  const memberById = useMemberById(isClientMode ? undefined : id);
+  const clientById = useClientById(isClientMode ? id : undefined);
+  const member = isClientMode ? clientById.data : memberById.data;
+  const memberLoading = isClientMode ? clientById.isLoading : memberById.isLoading;
+  const memberError = isClientMode ? clientById.error : memberById.error;
   
   // Update URL to use memberNumber instead of ID once member is loaded
   useEffect(() => {
     if (member && member.memberNumber && id !== member.memberNumber) {
       // Update URL without page reload using Next.js router
-      router.replace(`/dashboard/members/${currentMember.memberNumber}`, { scroll: false });
+      router.replace(`${basePath}/${member.memberNumber}`, { scroll: false });
     }
-  }, [member, id, router]);
+  }, [member, id, router, basePath]);
   
   // Fetch all records and filter by member
   // Force refetch to ensure fresh data (staleTime: 0 in hooks)
@@ -389,7 +397,7 @@ export function MemberDetailPage({
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">
+          <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">
             Profile
           </h1>
         </div>
@@ -403,10 +411,9 @@ export function MemberDetailPage({
             <div className="flex flex-col items-center text-center space-y-4">
               {/* Avatar */}
               <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                <AvatarImage src="" alt={currentMember.fullName} />
+                <AvatarImage src={currentMember.avatar || ""} alt={currentMember.fullName} />
                 <AvatarFallback 
-                  className="text-2xl font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" 
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                  className="text-2xl font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat"
                 >
                   {getInitials(currentMember.fullName)}
                 </AvatarFallback>
@@ -414,7 +421,7 @@ export function MemberDetailPage({
 
               {/* Name and Member ID */}
               <div className="space-y-1">
-                <h2 className="text-xl font-black italic tracking-tight uppercase font-montserrat">{currentMember.fullName}</h2>
+                <h2 className="text-xl font-black tracking-tight uppercase font-montserrat">{currentMember.fullName}</h2>
                 <p className="text-sm text-muted-foreground font-mono">
                   {formatMemberID(currentMember.memberNumber)}
                 </p>
@@ -478,14 +485,25 @@ export function MemberDetailPage({
             let totalBalanceSessions = 0;
             let totalSessions = 0;
             
-            // Sum up remaining sessions from ALL packages
+            // Sum up remaining sessions from ALL packages (prefer imported data)
             allPTPackages.forEach(record => {
               const packageTotalSessions = record.ptPackageSessions || 0;
-              const usedSessions = memberAppointments.filter(
-                apt => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
-              ).length;
-              const balanceSessions = Math.max(0, packageTotalSessions - usedSessions);
-              totalBalanceSessions += balanceSessions; // Sum all remaining sessions
+              const importedRemaining = record.remainingSessions;
+              const hasImported =
+                importedRemaining != null &&
+                !isNaN(importedRemaining) &&
+                importedRemaining >= 0;
+              const balanceSessions = hasImported
+                ? importedRemaining
+                : Math.max(
+                    0,
+                    packageTotalSessions -
+                      memberAppointments.filter(
+                        apt =>
+                          apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
+                      ).length
+                  );
+              totalBalanceSessions += balanceSessions;
               totalSessions += packageTotalSessions;
             });
             
@@ -626,7 +644,7 @@ export function MemberDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {totalVisits.toLocaleString()}
                 </div>
               </CardContent>
@@ -643,7 +661,7 @@ export function MemberDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {totalSessions.toLocaleString()}
                 </div>
               </CardContent>
@@ -660,7 +678,7 @@ export function MemberDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   ${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </CardContent>
@@ -669,7 +687,7 @@ export function MemberDetailPage({
 
           {/* Tabs */}
           <Tabs defaultValue="information" className="w-full flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3 min-w-0 overflow-x-auto">
               <TabsTrigger value="information" className="text-xs sm:text-sm">
                 <User className="mr-2 h-4 w-4" />
                 Information
@@ -870,7 +888,7 @@ export function MemberDetailPage({
         <Tabs defaultValue="packages" className="w-full">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <TabsList className="grid w-full max-w-xs grid-cols-2">
+              <TabsList className="grid w-full max-w-xs min-w-0 grid-cols-2">
                 <TabsTrigger value="packages" className="text-xs sm:text-sm">
                   <Package className="mr-2 h-4 w-4" />
                   Packages
@@ -1007,7 +1025,7 @@ export function MemberDetailPage({
                                       margin-bottom: 20px;
                                       font-family: 'Montserrat', sans-serif;
                                       font-weight: 900;
-                                      font-style: italic;
+                                      font-style: normal;
                                       font-size: 24px;
                                       text-transform: uppercase;
                                     }
@@ -1219,7 +1237,7 @@ export function MemberDetailPage({
                                       margin-bottom: 20px;
                                       font-family: 'Montserrat', sans-serif;
                                       font-weight: 900;
-                                      font-style: italic;
+                                      font-style: normal;
                                       font-size: 24px;
                                       text-transform: uppercase;
                                     }
@@ -1576,7 +1594,7 @@ function MemberDocumentsSection({ member }: { member: Member }) {
 
       {/* Document View Dialog */}
       <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="w-full max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{selectedDocument?.name}</DialogTitle>
             <DialogDescription>

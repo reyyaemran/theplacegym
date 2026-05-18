@@ -30,6 +30,11 @@ export {
 } from "./use-members";
 
 export {
+  useClients,
+  useClientById,
+} from "./use-clients";
+
+export {
   useMembershipRecords,
   useMembershipRecordById,
   useCreateMembershipRecord,
@@ -86,6 +91,26 @@ export {
   useUpdateMealPlan,
   useDeleteMealPlan,
 } from "./use-meal-plans";
+
+// Online presence
+export { useOnlineStaff, useHeartbeat } from "./use-online-staff";
+
+// Staff notes
+export {
+  useStaffNotes,
+  useUnreadNotesCount,
+  useSendNote,
+  useMarkNoteRead,
+  useDeleteNote,
+} from "./use-staff-notes";
+
+// Leave requests
+export {
+  useLeaveRequests,
+  useCreateLeaveRequest,
+  useReviewLeaveRequest,
+  useDeleteLeaveRequest,
+} from "./use-leave-requests";
 
 // Store hooks
 export { useCalendarStore } from "./use-calendar-store";

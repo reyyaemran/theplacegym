@@ -295,7 +295,7 @@ export function StaffPage() {
     <div className="flex flex-col gap-6 min-w-0">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">STAFF</h1>
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">STAFF</h1>
       </div>
 
       {/* Table */}

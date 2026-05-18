@@ -30,13 +30,13 @@ export function PTPackageRecordsFilters({
       >
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
-          placeholder="Search by member name, invoice..."
+          placeholder="Search..."
           value={filters.search}
           onChange={(e) => onFiltersChange({ search: e.target.value })}
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setIsSearchFocused(false)}
           className={cn(
-            "pl-9 transition-all duration-200 placeholder:text-xs",
+            "pl-9 transition-all duration-200 placeholder:text-sm",
             !isSearchFocused && !hasSearchValue && "pr-3"
           )}
         />

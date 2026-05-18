@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * Props interface for DatePickerWithRange component
@@ -48,6 +49,9 @@ export function DatePickerWithRange({
   onChange,
   className,
 }: DatePickerWithRangeProps) {
+  const isMobile = useIsMobile();
+  const dateFormat = isMobile ? "MMM d" : "LLL dd, y";
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -56,29 +60,28 @@ export function DatePickerWithRange({
             id="date-range-picker"
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal md:w-[300px]",
+              "rounded-full h-10 px-4 justify-start text-left font-normal w-full sm:w-auto sm:min-w-0 max-w-full",
               !value && "text-muted-foreground",
             )}
             aria-label="Choose date range"
             aria-haspopup="dialog"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
             {value?.from ? (
               value.to ? (
-                <>
-                  {format(value.from, "LLL dd, y")} -{" "}
-                  {format(value.to, "LLL dd, y")}
-                </>
+                <span className="truncate min-w-0">
+                  {format(value.from, dateFormat)} — {format(value.to, dateFormat)}
+                </span>
               ) : (
-                format(value.from, "LLL dd, y")
+                <span className="truncate">{format(value.from, dateFormat)}</span>
               )
             ) : (
-              <span>Pick a date range</span>
+              <span className="truncate">Pick a date range</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto p-0"
+          className="w-auto p-0 max-w-[calc(100vw-2rem)]"
           align="start"
           role="dialog"
           aria-label="Calendar date range picker"
@@ -89,7 +92,7 @@ export function DatePickerWithRange({
             defaultMonth={value?.from}
             selected={value}
             onSelect={onChange}
-            numberOfMonths={2}
+            numberOfMonths={isMobile ? 1 : 2}
             aria-label="Select date range"
             className="rounded-md border"
           />

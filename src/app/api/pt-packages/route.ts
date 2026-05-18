@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { PTPackageRecord } from "@/features/dashboard/pages/ptpackage-invoice/types/pt-package-record";
-import { mockPTPackageRecords } from "@/features/dashboard/pages/ptpackage-invoice/data/mock-pt-package-records";
 import { logger } from "@/lib/logger";
 import { ptPackageRecordSchema } from "@/lib/validations/pt-package-record";
+
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
 
 interface PTPackageQuery {
   memberId?: string;
@@ -13,72 +19,45 @@ interface PTPackageQuery {
 
 export async function GET(request: NextRequest) {
   try {
-    let records: PTPackageRecord[] = [];
-
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("pt-packages");
-
-      const searchParams = request.nextUrl.searchParams;
-      const memberId = searchParams.get("memberId");
-      const memberName = searchParams.get("memberName");
-
-      const query: PTPackageQuery = {};
-      if (memberId) query.memberId = memberId;
-      if (memberName) query.memberName = memberName;
-
-      records = await collection.find(query as any).sort({ startDate: -1 }).toArray() as unknown as PTPackageRecord[];
-
-      // Apply search filter if provided
-      const search = searchParams.get("search");
-      if (search) {
-        const searchLower = search.toLowerCase();
-        records = records.filter((record) => {
-          const searchableFields = [
-            record.memberId,
-            record.memberName,
-            record.invoiceNumber,
-            record.ptPackageName,
-          ].map((field) => field.toLowerCase());
-
-          return searchableFields.some((field) => field.includes(searchLower));
-        });
-      }
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check for MongoDB connection errors or missing URI
-      if (errorMessage.includes("MONGODB_URI") || errorMessage.includes("MongoClient") || errorMessage.includes("connection")) {
-        logger.info("Using mock PT package records data (MongoDB not configured or connection failed)");
-        records = [...mockPTPackageRecords];
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("pt-packages GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
 
-        // Apply filters to mock data
-        const searchParams = request.nextUrl.searchParams;
-        const memberId = searchParams.get("memberId");
-        const memberName = searchParams.get("memberName");
-        const search = searchParams.get("search");
+    const collection = db.collection("pt-packages");
 
-        if (memberId) {
-          records = records.filter((r) => r.memberId === memberId);
-        }
-        if (memberName) {
-          records = records.filter((r) => r.memberName === memberName);
-        }
-        if (search) {
-          const searchLower = search.toLowerCase();
-          records = records.filter((record) => {
-            const searchableFields = [
-              record.memberId,
-              record.memberName,
-              record.invoiceNumber,
-              record.ptPackageName,
-            ].map((field) => field.toLowerCase());
+    const searchParams = request.nextUrl.searchParams;
+    const memberId = searchParams.get("memberId");
+    const memberName = searchParams.get("memberName");
 
-            return searchableFields.some((field) => field.includes(searchLower));
-          });
-        }
-      } else {
-        throw error;
-      }
+    const query: PTPackageQuery = {};
+    if (memberId) query.memberId = memberId;
+    if (memberName) query.memberName = memberName;
+
+    const rawRecords = await collection.find(query as any).sort({ startDate: -1 }).toArray();
+    let records = rawRecords.map((r: any) => ({
+      ...r,
+      id: r.id || r._id?.toString(),
+    })) as PTPackageRecord[];
+
+    // Apply search filter if provided
+    const search = searchParams.get("search");
+    if (search) {
+      const searchLower = search.toLowerCase();
+      records = records.filter((record) => {
+        const searchableFields = [
+          record.memberId,
+          record.memberName,
+          record.invoiceNumber,
+          record.ptPackageName,
+        ].map((field) => field.toLowerCase());
+
+        return searchableFields.some((field) => field.includes(searchLower));
+      });
     }
 
     return NextResponse.json(records);
@@ -120,31 +99,26 @@ export async function POST(request: NextRequest) {
       ...validatedData,
     };
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("pt-packages");
-      const recordWithId: PTPackageRecord = {
-        id: `pt-package-${Date.now()}`,
-        ...record,
-      };
-      const result = await collection.insertOne(recordWithId as any);
-      const createdRecord: PTPackageRecord = {
-        ...recordWithId,
-        id: result.insertedId.toString(),
-      };
-      return NextResponse.json(createdRecord, { status: 201 });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        logger.info("Using mock mode for PT package record creation");
-        const mockRecord: PTPackageRecord = {
-          id: `pt-package-${Date.now()}`,
-          ...record,
-        };
-        return NextResponse.json(mockRecord, { status: 201 });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("pt-packages POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("pt-packages");
+    const recordWithId: PTPackageRecord = {
+      id: `pt-package-${Date.now()}`,
+      ...record,
+    };
+    const result = await collection.insertOne(recordWithId as any);
+    const createdRecord: PTPackageRecord = {
+      ...recordWithId,
+      id: result.insertedId.toString(),
+    };
+    return NextResponse.json(createdRecord, { status: 201 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
@@ -161,4 +135,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

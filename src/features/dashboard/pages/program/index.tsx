@@ -509,7 +509,7 @@ export function ProgramPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">
           Program
         </h1>
         <div className="flex items-center gap-2">
@@ -520,7 +520,7 @@ export function ProgramPage() {
           <Button
             size="icon"
             variant="outline"
-            className="h-8 w-8"
+            className="h-10 w-10 min-w-10 min-h-10 shrink-0 sm:h-8 sm:w-8"
             onClick={handleExportPDF}
             title="Export PDF"
           >
@@ -529,7 +529,7 @@ export function ProgramPage() {
           <Button
             size="icon"
             variant="secondary"
-            className="h-8 w-8"
+            className="h-10 w-10 min-w-10 min-h-10 shrink-0 sm:h-8 sm:w-8"
             onClick={handleShare}
             title="Share"
           >
@@ -542,7 +542,7 @@ export function ProgramPage() {
         <Card className="lg:col-span-1">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm font-black italic tracking-tight uppercase font-montserrat">
+              <CardTitle className="text-sm font-black tracking-tight uppercase font-montserrat">
                 Saved Programs & Plans
               </CardTitle>
               <div className="relative w-full max-w-[140px] sm:max-w-[160px]">
@@ -551,7 +551,7 @@ export function ProgramPage() {
                   placeholder="Search client..."
                   value={savedSearch}
                   onChange={(e) => setSavedSearch(e.target.value)}
-                  className="h-8 pl-8 text-xs placeholder:text-xs"
+                  className="h-8 pl-8 text-xs placeholder:text-sm"
                 />
               </div>
             </div>

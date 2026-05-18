@@ -219,7 +219,7 @@ export function MemberActivityTable({
                 <div className="flex items-center gap-2 flex-wrap">
                   {packageName && (
                     <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-                      <span className="uppercase italic font-black text-foreground text-xs" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      <span className="uppercase font-black text-foreground text-xs" >
                         {packageName}
                       </span>
                     </Badge>

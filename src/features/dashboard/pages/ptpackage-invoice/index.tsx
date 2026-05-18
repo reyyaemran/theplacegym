@@ -116,7 +116,7 @@ export function PTPackagesListPage() {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">PT PACKAGE</h1>
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">PT PACKAGE</h1>
       </div>
 
       {/* Stats Cards */}
@@ -132,7 +132,7 @@ export function PTPackagesListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.totalPackages}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.totalPackages}</div>
             </div>
           </CardContent>
         </Card>
@@ -148,7 +148,7 @@ export function PTPackagesListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">${stats.totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">${stats.totalRevenue.toFixed(2)}</div>
             </div>
           </CardContent>
         </Card>
@@ -164,7 +164,7 @@ export function PTPackagesListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.totalSessions}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.totalSessions}</div>
             </div>
           </CardContent>
         </Card>
@@ -180,7 +180,7 @@ export function PTPackagesListPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[40px] flex items-center justify-center">
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{stats.activePackages}</div>
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{stats.activePackages}</div>
             </div>
           </CardContent>
         </Card>

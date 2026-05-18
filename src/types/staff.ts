@@ -29,10 +29,27 @@ export interface StaffDocument {
 export type StaffPermission = 
   | "view_dashboard"
   | "manage_roster"
+  | "manage_appointments"
+  | "manage_program"
   | "manage_staff"
   | "manage_members"
   | "view_reports"
   | "manage_settings";
+
+/**
+ * Default permissions assigned to new staff based on department.
+ * Admins bypass all permission checks.
+ */
+export const DEFAULT_PERMISSIONS_BY_DEPARTMENT: Record<string, StaffPermission[]> = {
+  PT:  ["view_dashboard", "manage_appointments", "manage_program", "manage_members"],
+  PTS: ["view_dashboard", "manage_appointments", "manage_program", "manage_members", "manage_roster", "manage_staff", "view_reports"],
+  FC:  ["view_dashboard", "manage_members", "manage_program", "view_reports"],
+  FCS: ["view_dashboard", "manage_members", "manage_program", "view_reports", "manage_roster", "manage_staff"],
+  CC:  ["view_dashboard", "manage_members", "view_reports"],
+  CCS: ["view_dashboard", "manage_members", "view_reports", "manage_roster", "manage_staff"],
+  CM:  ["view_dashboard", "manage_roster", "manage_appointments", "manage_program", "manage_staff", "manage_members", "view_reports", "manage_settings"],
+  ASM: ["view_dashboard", "manage_roster", "manage_appointments", "manage_program", "manage_staff", "manage_members", "view_reports", "manage_settings"],
+};
 
 export interface Staff {
   _id?: string;
@@ -73,6 +90,9 @@ export interface Staff {
   loginEnabled?: boolean; // Can the staff member log in?
   role?: "ADMIN" | "STAFF"; // Simple role for now
   permissions?: StaffPermission[]; // List of permissions
+
+  // Online presence
+  lastActive?: Date | string;
 
   createdAt?: Date | string;
   updatedAt?: Date | string;

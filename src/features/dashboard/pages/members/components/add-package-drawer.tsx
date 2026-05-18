@@ -414,7 +414,7 @@ export function AddPackageDrawer({
         <ScrollArea className="flex-1 px-4 py-3">
           <div className="space-y-3 max-w-2xl mx-auto">
                 {/* Issued By and Assigned To - 2x2 Layout */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="issuedBy"
@@ -437,8 +437,8 @@ export function AddPackageDrawer({
                                   {selectedStaff ? (
                                     <>
                                       <Avatar className="h-5 w-5 shrink-0 border border-background">
-                                        <AvatarImage src="" />
-                                        <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                        <AvatarImage src={selectedStaff.avatar || ""} alt={selectedStaff.name} />
+                                        <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                           {getInitials(selectedStaff.name)}
                                         </AvatarFallback>
                                       </Avatar>
@@ -453,7 +453,7 @@ export function AddPackageDrawer({
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                        <PopoverContent className="w-[350px] p-0" align="start">
+                        <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                           <Command>
                             <CommandInput placeholder="Search staff..." />
                             <CommandList className="max-h-[200px] overflow-y-auto">
@@ -470,8 +470,8 @@ export function AddPackageDrawer({
                                     className="flex items-center gap-3 pr-8 relative"
                                   >
                                     <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                      <AvatarImage src="" />
-                                      <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                      <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                      <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                         {getInitials(staff.name)}
                                       </AvatarFallback>
                                     </Avatar>
@@ -522,8 +522,8 @@ export function AddPackageDrawer({
                                     {selectedStaff ? (
                                       <>
                                         <Avatar className="h-5 w-5 shrink-0 border border-background">
-                                          <AvatarImage src="" />
-                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                          <AvatarImage src={selectedStaff.avatar || ""} alt={selectedStaff.name} />
+                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                             {getInitials(selectedStaff.name)}
                                           </AvatarFallback>
                                         </Avatar>
@@ -538,7 +538,7 @@ export function AddPackageDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                          <PopoverContent className="w-[350px] p-0" align="start">
+                          <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Search FC/FCS..." />
                               <CommandList className="max-h-[200px] overflow-y-auto">
@@ -555,8 +555,8 @@ export function AddPackageDrawer({
                                       className="flex items-center gap-3 pr-8 relative"
                                     >
                                       <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                        <AvatarImage src="" />
-                                        <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                        <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                        <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                           {getInitials(staff.name)}
                                         </AvatarFallback>
                                       </Avatar>
@@ -608,8 +608,8 @@ export function AddPackageDrawer({
                                     {selectedStaff ? (
                                       <>
                                         <Avatar className="h-5 w-5 shrink-0 border border-background">
-                                          <AvatarImage src="" />
-                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                          <AvatarImage src={selectedStaff.avatar || ""} alt={selectedStaff.name} />
+                                          <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                             {getInitials(selectedStaff.name)}
                                           </AvatarFallback>
                                         </Avatar>
@@ -624,7 +624,7 @@ export function AddPackageDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                          <PopoverContent className="w-[350px] p-0" align="start">
+                          <PopoverContent className="w-[min(350px,calc(100vw-2rem))] p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Search trainers..." />
                               <CommandList className="max-h-[200px] overflow-y-auto">
@@ -641,8 +641,8 @@ export function AddPackageDrawer({
                                       className="flex items-center gap-3 pr-8 relative"
                                     >
                                       <Avatar className="h-8 w-8 shrink-0 border border-background">
-                                        <AvatarImage src="" />
-                                        <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                        <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                                        <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                           {getInitials(staff.name)}
                                         </AvatarFallback>
                                       </Avatar>
@@ -674,7 +674,7 @@ export function AddPackageDrawer({
                 {/* Membership Fields */}
                 {isMembership && (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <FormField
                         control={form.control}
                         name="membershipInvoiceNumber"
@@ -684,7 +684,7 @@ export function AddPackageDrawer({
                             <FormControl>
                               <Input
                                 placeholder="Auto-generated"
-                                className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="h-9 placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                               />
                             </FormControl>
@@ -716,7 +716,7 @@ export function AddPackageDrawer({
                               >
                                 <FormControl>
                                   <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                    <SelectValue placeholder="Select membership type" />
+                                    <SelectValue placeholder="Membership" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="max-h-[200px]">
@@ -747,8 +747,7 @@ export function AddPackageDrawer({
                                           <div className="flex items-center gap-2 w-full">
                                             <Badge 
                                               variant="outline" 
-                                              className="gap-1.5 border-muted bg-muted/50 text-xs font-black italic shrink-0"
-                                              style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                              className="gap-1.5 border-muted bg-muted/50 text-xs font-black shrink-0 font-montserrat"
                                             >
                                               {getBadgeText()}
                                             </Badge>
@@ -794,7 +793,7 @@ export function AddPackageDrawer({
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                               <Calendar
                                 mode="single"
                                 selected={field.value}
@@ -811,7 +810,7 @@ export function AddPackageDrawer({
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <FormField
                         control={form.control}
                         name="membershipPaymentType"
@@ -824,7 +823,7 @@ export function AddPackageDrawer({
                             >
                               <FormControl>
                                 <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                  <SelectValue placeholder="Select payment type" />
+                                  <SelectValue placeholder="Payment" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -865,7 +864,7 @@ export function AddPackageDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
@@ -892,7 +891,7 @@ export function AddPackageDrawer({
                           <FormControl>
                             <Input 
                               placeholder="Remark" 
-                              className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                              className="h-9 placeholder:text-sm placeholder:text-muted-foreground/60"
                               {...field} 
                             />
                           </FormControl>
@@ -907,7 +906,7 @@ export function AddPackageDrawer({
                 {isPTPackage && (
                   <>
                     {/* Invoice Number and PT Package Type - 2x2 Layout */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <FormField
                         control={form.control}
                         name="ptPackageInvoiceNumber"
@@ -917,7 +916,7 @@ export function AddPackageDrawer({
                             <FormControl>
                               <Input
                                 placeholder="Auto-generated"
-                                className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                                className="h-9 placeholder:text-sm placeholder:text-muted-foreground/60"
                                 {...field}
                               />
                             </FormControl>
@@ -938,7 +937,7 @@ export function AddPackageDrawer({
                             >
                               <FormControl>
                                 <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                  <SelectValue placeholder="Select package" />
+                                  <SelectValue placeholder="Package" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent className="max-h-[300px]">
@@ -948,8 +947,7 @@ export function AddPackageDrawer({
                                       <div className="flex items-center gap-2 w-full">
                                         <Badge 
                                           variant="outline" 
-                                          className="gap-1.5 border-muted bg-muted/50 text-sm font-black italic"
-                                          style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                          className="gap-1.5 border-muted bg-muted/50 text-sm font-black font-montserrat"
                                         >
                                           {pkg.shortName}
                                         </Badge>
@@ -999,7 +997,7 @@ export function AddPackageDrawer({
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                               <Calendar
                                 mode="single"
                                 selected={field.value}
@@ -1016,7 +1014,7 @@ export function AddPackageDrawer({
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <FormField
                         control={form.control}
                         name="ptPackagePaymentType"
@@ -1029,7 +1027,7 @@ export function AddPackageDrawer({
                             >
                               <FormControl>
                                 <SelectTrigger className="h-9 text-sm data-[placeholder]:text-xs data-[placeholder]:text-muted-foreground/60">
-                                  <SelectValue placeholder="Select payment type" />
+                                  <SelectValue placeholder="Payment" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -1070,7 +1068,7 @@ export function AddPackageDrawer({
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
@@ -1097,7 +1095,7 @@ export function AddPackageDrawer({
                           <FormControl>
                             <Input 
                               placeholder="Remark" 
-                              className="h-9 placeholder:text-xs placeholder:text-muted-foreground/60"
+                              className="h-9 placeholder:text-sm placeholder:text-muted-foreground/60"
                               {...field} 
                             />
                           </FormControl>

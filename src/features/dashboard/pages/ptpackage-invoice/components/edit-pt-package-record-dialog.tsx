@@ -161,13 +161,13 @@ export function EditPTPackageRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit PT Package Record</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="ptPackageId"
@@ -180,7 +180,7 @@ export function EditPTPackageRecordDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select PT package" />
+                          <SelectValue placeholder="PT package" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -216,7 +216,7 @@ export function EditPTPackageRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="amount"
@@ -237,7 +237,7 @@ export function EditPTPackageRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -256,7 +256,7 @@ export function EditPTPackageRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -288,7 +288,7 @@ export function EditPTPackageRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -303,7 +303,7 @@ export function EditPTPackageRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="paymentType"
@@ -313,7 +313,7 @@ export function EditPTPackageRecordDialog({
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select payment type" />
+                          <SelectValue placeholder="Payment" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -347,7 +347,7 @@ export function EditPTPackageRecordDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -362,7 +362,7 @@ export function EditPTPackageRecordDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="assignedStaffName"
@@ -372,7 +372,7 @@ export function EditPTPackageRecordDialog({
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select staff" />
+                          <SelectValue placeholder="Staff" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -398,7 +398,7 @@ export function EditPTPackageRecordDialog({
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select staff" />
+                          <SelectValue placeholder="Staff" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -424,7 +424,7 @@ export function EditPTPackageRecordDialog({
                   <FormLabel>Payment Remark</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Optional payment remark"
+                      placeholder="Remark"
                       {...field}
                     />
                   </FormControl>

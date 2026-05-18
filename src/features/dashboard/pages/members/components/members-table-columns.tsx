@@ -228,12 +228,14 @@ interface UseMemberColumnsProps {
   onEdit?: (member: Member) => void;
   ptPackageRecords?: PTPackageRecord[];
   appointments?: Appointment[];
+  detailBasePath?: string;
 }
 
 export const useMemberColumns = ({ 
   onEdit,
   ptPackageRecords = mockPTPackageRecords,
   appointments = mockAppointments,
+  detailBasePath = "/dashboard/members",
 }: UseMemberColumnsProps = {}) => {
   return useMemo<ColumnDef<Member>[]>(
     () => [
@@ -252,8 +254,8 @@ export const useMemberColumns = ({
           return (
             <div className="flex items-center gap-3 h-full">
               <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <AvatarImage src={member.avatar || ""} alt={member.fullName} />
+                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                   {getInitials(member.fullName)}
                 </AvatarFallback>
               </Avatar>
@@ -291,7 +293,7 @@ export const useMemberColumns = ({
           
           return (
             <Badge variant="outline" className="gap-1.5 border-muted bg-muted/50 text-xs font-normal">
-              <span className="uppercase italic font-black text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="uppercase font-black text-foreground font-montserrat">
                 {membershipTypeLabels[membershipType]}
               </span>
             </Badge>
@@ -306,7 +308,9 @@ export const useMemberColumns = ({
           
           // Calculate balance sessions from PT package records (same logic as member profile)
           const memberPTPackageRecords = ptPackageRecords.filter(
-            (record) => record.memberId === member.memberNumber || record.memberName === member.fullName
+            (record) =>
+              String(record.memberId) === String(member.memberNumber) ||
+              (record.memberName && member.fullName && record.memberName.toLowerCase() === member.fullName.toLowerCase())
           );
           
           // Get member's appointments
@@ -325,10 +329,21 @@ export const useMemberColumns = ({
           
           activePTPackages.forEach(record => {
             const packageTotalSessions = record.ptPackageSessions || 0;
-            const usedSessions = memberAppointments.filter(
-              apt => apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
-            ).length;
-            const balanceSessions = Math.max(0, packageTotalSessions - usedSessions);
+            const importedRemaining = record.remainingSessions;
+            const hasImported =
+              importedRemaining != null &&
+              !isNaN(importedRemaining) &&
+              importedRemaining >= 0;
+            const balanceSessions = hasImported
+              ? importedRemaining
+              : Math.max(
+                  0,
+                  packageTotalSessions -
+                    memberAppointments.filter(
+                      apt =>
+                        apt.ptPackageRecordId === record.id && apt.status === "COMPLETED"
+                    ).length
+                );
             totalBalanceSessions += balanceSessions;
             totalSessions += packageTotalSessions;
           });
@@ -368,8 +383,10 @@ export const useMemberColumns = ({
           // Find all PT package records for this member
           const memberPTPackageRecords = ptPackageRecords.filter(
             (record) => {
-              const matchesById = record.memberId === member.memberNumber;
-              const matchesByName = record.memberName === member.fullName;
+              const matchesById = String(record.memberId) === String(member.memberNumber);
+              const matchesByName = record.memberName && member.fullName
+                ? record.memberName.toLowerCase() === member.fullName.toLowerCase()
+                : false;
               return matchesById || matchesByName;
             }
           );
@@ -488,9 +505,9 @@ export const useMemberColumns = ({
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => <MemberActionsDropdown member={row.original} onEdit={onEdit} />,
+        cell: ({ row }) => <MemberActionsDropdown member={row.original} onEdit={onEdit} detailBasePath={detailBasePath} />,
       },
     ],
-    [onEdit, ptPackageRecords, appointments]
+    [onEdit, ptPackageRecords, appointments, detailBasePath]
   );
 }; 

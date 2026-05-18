@@ -169,10 +169,9 @@ export function MembershipFormDialog({
                   <FormLabel>Name (for Membership Badges)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., 1M, DAY PASS"
+                      placeholder="e.g. 1M"
                       {...field}
                       className="font-mono uppercase italic"
-                      style={{ fontFamily: 'Montserrat, sans-serif' }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +179,7 @@ export function MembershipFormDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid grid-cols-[1fr_auto] gap-2">
             <FormField
               control={form.control}
@@ -258,7 +257,7 @@ export function MembershipFormDialog({
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Membership description..."
+                      placeholder="Description"
                       className="resize-none"
                       rows={3}
                       {...field}

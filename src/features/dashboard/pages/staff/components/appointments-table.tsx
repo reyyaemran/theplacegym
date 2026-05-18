@@ -105,7 +105,7 @@ export function AppointmentsTable({
         header: "Session Type",
         cell: ({ row }) => {
           return (
-            <span className="text-xs font-black italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <span className="text-xs font-black" >
               {row.original.type || "Session"}
             </span>
           );

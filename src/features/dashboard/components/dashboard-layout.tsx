@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./sidebar/app-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Props interface for DashboardLayoutWrapper component
@@ -37,9 +38,25 @@ function DashboardLayoutWrapper({ children }: Props) {
       : true
     : true;
 
-  // Wait for client-side rendering
+  // Show skeleton during SSR/hydration - avoids flash of empty content
   if (!isClient) {
-    return null;
+    return (
+      <div className="flex h-svh w-full">
+        <Skeleton className="w-64 shrink-0" />
+        <div className="flex flex-1 flex-col min-w-0">
+          <Skeleton className="h-14 shrink-0" />
+          <Skeleton className="h-px shrink-0" />
+          <div className="flex-1 p-4 space-y-4">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-32 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

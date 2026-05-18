@@ -10,6 +10,10 @@ import {
   Dumbbell,
   CreditCard,
   Cake,
+  MessageSquare,
+  CalendarClock,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,25 +25,47 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMembershipRecords } from "@/hooks/use-membership-records";
 import { usePTPackageRecords } from "@/hooks/use-pt-package-records";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useMembers } from "@/hooks/use-members";
 import { useStaff } from "@/hooks/use-staff";
 import { useAuth } from "@/hooks/use-auth";
+import { useStaffNotes, useMarkNoteRead } from "@/hooks/use-staff-notes";
+import { useLeaveRequests, useReviewLeaveRequest } from "@/hooks/use-leave-requests";
+import { LEAVE_TYPE_LABELS } from "@/types/leave-request";
+import type { LeaveRequest } from "@/types/leave-request";
 import { format, differenceInDays, isToday, isYesterday, subDays } from "date-fns";
+import { isRecordAssignedToStaff } from "@/lib/staff-assignment";
+
+const SUPERVISOR_DEPARTMENTS = ["PTS", "CCS", "CM", "ASM"];
 
 interface NotificationItem {
   id: string;
-  type: "activity" | "alert" | "info";
+  type: "activity" | "alert" | "info" | "note" | "leave-pending";
   icon: React.ReactNode;
   title: string;
   description: string;
   time: Date;
-  category: "membership" | "pt-package" | "appointment" | "member" | "system";
+  category: "membership" | "pt-package" | "appointment" | "member" | "system" | "staff-note" | "leave-pending";
+  fromStaffId?: string;
+  fromStaffName?: string;
+  fromStaffAvatar?: string;
+  leaveRequestId?: string;
+  leaveRequest?: LeaveRequest;
 }
 
 const STORAGE_KEY_PREFIX = "tp-notifications-read";
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 /**
  * NotificationsDropdown Component
@@ -50,11 +76,19 @@ const STORAGE_KEY_PREFIX = "tp-notifications-read";
  */
 export function NotificationsDropdown() {
   const { isSuperAdmin, staff } = useAuth();
+  const staffDepartment = (staff as { department?: string } | null)?.department;
+  const isSupervisor = staffDepartment && SUPERVISOR_DEPARTMENTS.includes(staffDepartment);
   const { data: membershipRecords = [] } = useMembershipRecords();
   const { data: ptPackageRecords = [] } = usePTPackageRecords();
   const { data: appointments = [] } = useAppointments();
   const { data: members = [] } = useMembers();
   const { data: staffList = [] } = useStaff();
+  const { data: receivedNotes = [] } = useStaffNotes("received");
+  const { data: pendingLeaveRequests = [] } = useLeaveRequests(
+    isSupervisor ? { status: "PENDING" } : undefined
+  );
+  const markNoteRead = useMarkNoteRead();
+  const reviewLeaveRequest = useReviewLeaveRequest();
   
   // Get current user ID for user-specific storage key
   const currentUserId = (staff as any)?.staffId || (staff as any)?._id || "anonymous";
@@ -98,13 +132,37 @@ export function NotificationsDropdown() {
     const now = new Date();
     const sevenDaysAgo = subDays(now, 7);
 
+    const isAdmin = (staff as { isAdmin?: boolean; role?: string } | null)?.isAdmin || (staff as { role?: string } | null)?.role === "SUPERADMIN" || (staff as { role?: string } | null)?.role === "ADMIN";
+    const isPT = staffDepartment === "PT" || staffDepartment === "PTS";
+    const isFC = staffDepartment === "FC" || staffDepartment === "FCS";
+    const currentStaffId = (staff as { _id?: string; staffId?: string })?.staffId ?? (staff as { _id?: string })?._id;
+
+    // For PT/FC: only show notifications for their assigned clients. Admins see all.
+    const myClientMemberIds = new Set<string>();
+    if (!isAdmin && staff) {
+      if (isPT) {
+        ptPackageRecords
+          .filter((r) => isRecordAssignedToStaff(r, staff))
+          .forEach((r) => myClientMemberIds.add(String(r.memberId)));
+      } else if (isFC) {
+        membershipRecords
+          .filter((r) => isRecordAssignedToStaff(r, staff))
+          .forEach((r) => myClientMemberIds.add(String(r.memberId)));
+      }
+    }
+
     // Recent Membership Invoices (last 7 days)
     membershipRecords
-      .filter((record) => new Date(record.paymentDate) >= sevenDaysAgo)
+      .filter((record) => {
+        if (isAdmin) return new Date(record.paymentDate) >= sevenDaysAgo;
+        if (isFC && isRecordAssignedToStaff(record, staff)) return new Date(record.paymentDate) >= sevenDaysAgo;
+        return false;
+      })
       .slice(0, 5)
-      .forEach((record) => {
+      .forEach((record, idx) => {
+        const rid = record.id ?? (record as { _id?: string })._id ?? `m-${record.memberId}-${record.invoiceNumber}-${idx}`;
         items.push({
-          id: `membership-${record.id}`,
+          id: `membership-${rid}`,
           type: "activity",
           icon: <CreditCard className="h-4 w-4 text-emerald-500" />,
           title: "Membership Issued",
@@ -116,11 +174,16 @@ export function NotificationsDropdown() {
 
     // Recent PT Package Invoices (last 7 days)
     ptPackageRecords
-      .filter((record) => new Date(record.paymentDate) >= sevenDaysAgo)
+      .filter((record) => {
+        if (isAdmin) return new Date(record.paymentDate) >= sevenDaysAgo;
+        if (isPT && isRecordAssignedToStaff(record, staff)) return new Date(record.paymentDate) >= sevenDaysAgo;
+        return false;
+      })
       .slice(0, 5)
-      .forEach((record) => {
+      .forEach((record, idx) => {
+        const rid = record.id ?? (record as { _id?: string })._id ?? `pt-${record.memberId}-${record.invoiceNumber}-${idx}`;
         items.push({
-          id: `pt-${record.id}`,
+          id: `pt-${rid}`,
           type: "activity",
           icon: <Dumbbell className="h-4 w-4 text-purple-500" />,
           title: "PT Package Issued",
@@ -132,11 +195,17 @@ export function NotificationsDropdown() {
 
     // Completed Appointments Today
     appointments
-      .filter((apt) => apt.status === "COMPLETED" && apt.date && isToday(new Date(apt.date)))
+      .filter((apt) => {
+        if (!apt.status || apt.status !== "COMPLETED" || !apt.date || !isToday(new Date(apt.date))) return false;
+        if (isAdmin) return true;
+        const aptStaffId = (apt as { staffId?: string }).staffId;
+        return currentStaffId && aptStaffId && String(aptStaffId) === String(currentStaffId);
+      })
       .slice(0, 3)
-      .forEach((apt) => {
+      .forEach((apt, idx) => {
+        const aid = apt._id ?? apt.appointmentNumber ?? `apt-completed-${idx}`;
         items.push({
-          id: `apt-completed-${apt._id ?? apt.appointmentNumber}`,
+          id: `apt-completed-${aid}`,
           type: "activity",
           icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
           title: "Session Completed",
@@ -148,11 +217,17 @@ export function NotificationsDropdown() {
 
     // Upcoming Appointments Today
     appointments
-      .filter((apt) => apt.status === "SCHEDULED" && apt.date && isToday(new Date(apt.date)))
+      .filter((apt) => {
+        if (!apt.status || apt.status !== "SCHEDULED" || !apt.date || !isToday(new Date(apt.date))) return false;
+        if (isAdmin) return true;
+        const aptStaffId = (apt as { staffId?: string }).staffId;
+        return currentStaffId && aptStaffId && String(aptStaffId) === String(currentStaffId);
+      })
       .slice(0, 3)
-      .forEach((apt) => {
+      .forEach((apt, idx) => {
+        const aid = apt._id ?? apt.appointmentNumber ?? `apt-upcoming-${idx}`;
         items.push({
-          id: `apt-upcoming-${apt._id ?? apt.appointmentNumber}`,
+          id: `apt-upcoming-${aid}`,
           type: "info",
           icon: <Calendar className="h-4 w-4 text-blue-500" />,
           title: "Upcoming Session",
@@ -167,13 +242,17 @@ export function NotificationsDropdown() {
       .filter((record) => {
         const expiry = new Date(record.expiryDate);
         const daysUntil = differenceInDays(expiry, now);
-        return daysUntil >= 0 && daysUntil <= 7;
+        if (daysUntil < 0 || daysUntil > 7) return false;
+        if (isAdmin) return true;
+        if (isFC && isRecordAssignedToStaff(record, staff)) return true;
+        return false;
       })
       .slice(0, 3)
-      .forEach((record) => {
+      .forEach((record, idx) => {
+        const rid = record.id ?? (record as { _id?: string })._id ?? `mem-exp-${record.memberId}-${record.invoiceNumber}-${idx}`;
         const daysLeft = differenceInDays(new Date(record.expiryDate), now);
         items.push({
-          id: `membership-expiring-${record.id}`,
+          id: `membership-expiring-${rid}`,
           type: "alert",
           icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
           title: "Membership Expiring",
@@ -188,13 +267,17 @@ export function NotificationsDropdown() {
       .filter((record) => {
         const expiry = new Date(record.expiryDate);
         const daysUntil = differenceInDays(expiry, now);
-        return daysUntil >= 0 && daysUntil <= 7;
+        if (daysUntil < 0 || daysUntil > 7) return false;
+        if (isAdmin) return true;
+        if (isPT && isRecordAssignedToStaff(record, staff)) return true;
+        return false;
       })
       .slice(0, 3)
-      .forEach((record) => {
+      .forEach((record, idx) => {
+        const rid = record.id ?? (record as { _id?: string })._id ?? `pt-exp-${record.memberId}-${record.invoiceNumber}-${idx}`;
         const daysLeft = differenceInDays(new Date(record.expiryDate), now);
         items.push({
-          id: `pt-expiring-${record.id}`,
+          id: `pt-expiring-${rid}`,
           type: "alert",
           icon: <AlertTriangle className="h-4 w-4 text-orange-500" />,
           title: "PT Package Expiring",
@@ -207,11 +290,17 @@ export function NotificationsDropdown() {
     // New Members (joined in last 3 days)
     const threeDaysAgo = subDays(now, 3);
     members
-      .filter((member) => new Date(member.dateJoined) >= threeDaysAgo)
+      .filter((member) => {
+        if (new Date(member.dateJoined) < threeDaysAgo) return false;
+        if (isAdmin) return true;
+        const mid = member.memberNumber ?? member.id ?? (member as { _id?: string })._id;
+        return mid != null && myClientMemberIds.has(String(mid));
+      })
       .slice(0, 3)
-      .forEach((member) => {
+      .forEach((member, idx) => {
+        const mid = member.id ?? (member as { _id?: string })._id ?? member.memberNumber ?? `member-new-${idx}`;
         items.push({
-          id: `member-new-${member.id}`,
+          id: `member-new-${mid}`,
           type: "activity",
           icon: <UserPlus className="h-4 w-4 text-cyan-500" />,
           title: "New Member",
@@ -259,13 +348,17 @@ export function NotificationsDropdown() {
     members
       .filter((member) => {
         const { isUpcoming } = isBirthdayUpcoming(member.dateOfBirth);
-        return isUpcoming;
+        if (!isUpcoming) return false;
+        if (isAdmin) return true;
+        const mid = member.memberNumber ?? member.id ?? (member as { _id?: string })._id;
+        return mid != null && myClientMemberIds.has(String(mid));
       })
       .slice(0, 5)
-      .forEach((member) => {
+      .forEach((member, idx) => {
+        const mid = member.id ?? (member as { _id?: string })._id ?? member.memberNumber ?? `member-bday-${idx}`;
         const { daysUntil, birthdayDate } = isBirthdayUpcoming(member.dateOfBirth);
         items.push({
-          id: `member-birthday-${member.id}`,
+          id: `member-birthday-${mid}`,
           type: "info",
           icon: <Cake className="h-4 w-4 text-pink-500" />,
           title: "Member Birthday",
@@ -282,10 +375,11 @@ export function NotificationsDropdown() {
         return isUpcoming;
       })
       .slice(0, 5)
-      .forEach((staffMember) => {
+      .forEach((staffMember, idx) => {
+        const sid = staffMember._id ?? (staffMember as { id?: string }).id ?? `staff-bday-${idx}`;
         const { daysUntil, birthdayDate } = isBirthdayUpcoming(staffMember.dateOfBirth);
         items.push({
-          id: `staff-birthday-${staffMember._id}`,
+          id: `staff-birthday-${sid}`,
           type: "info",
           icon: <Cake className="h-4 w-4 text-rose-500" />,
           title: "Staff Birthday",
@@ -295,17 +389,72 @@ export function NotificationsDropdown() {
         });
       });
 
+    // Staff Notes received by this user
+    receivedNotes
+      .slice(0, 10)
+      .forEach((note, idx) => {
+        const nid = note._id ?? `note-${idx}`;
+        const fromStaff = note.fromStaffId
+          ? staffList.find((s: { _id?: string }) => String(s._id) === String(note.fromStaffId))
+          : null;
+        items.push({
+          id: `staff-note-${nid}`,
+          type: "note",
+          icon: <MessageSquare className={`h-4 w-4 ${note.read ? "text-muted-foreground" : "text-blue-500"}`} />,
+          title: note.fromStaffName,
+          description: note.message,
+          time: new Date(note.createdAt || Date.now()),
+          category: "staff-note",
+          fromStaffId: note.fromStaffId,
+          fromStaffName: note.fromStaffName,
+          fromStaffAvatar: (fromStaff as { avatar?: string })?.avatar,
+        });
+      });
+
+    // Pending leave requests (for supervisors only – to approve/reject)
+    if (isSupervisor && pendingLeaveRequests.length > 0) {
+      pendingLeaveRequests.slice(0, 10).forEach((req, idx) => {
+        const lid = req._id ?? `leave-${idx}`;
+        items.push({
+          id: `leave-pending-${lid}`,
+          type: "leave-pending",
+          icon: <CalendarClock className="h-4 w-4 text-amber-500" />,
+          title: `Leave request from ${req.staffName}`,
+          description: `${LEAVE_TYPE_LABELS[req.leaveType as keyof typeof LEAVE_TYPE_LABELS] || req.leaveType} • ${req.startDate} to ${req.endDate}${req.reason ? ` • ${req.reason}` : ""}`,
+          time: new Date(req.createdAt || Date.now()),
+          category: "leave-pending",
+          leaveRequestId: req._id,
+          leaveRequest: req,
+        });
+      });
+    }
+
     // Sort by time (most recent first)
     items.sort((a, b) => b.time.getTime() - a.time.getTime());
 
-    return items.slice(0, 20); // Limit to 20 notifications
-  }, [membershipRecords, ptPackageRecords, appointments, members, staffList]);
+    return items.slice(0, 25); // Limit to 25 notifications
+  }, [membershipRecords, ptPackageRecords, appointments, members, staffList, receivedNotes, isSupervisor, pendingLeaveRequests, staff, staffDepartment]);
 
-  // Count unread notifications
+  // Count unread notes (from DB)
+  const unreadNotesCount = useMemo(
+    () => receivedNotes.filter((n) => !n.read).length,
+    [receivedNotes]
+  );
+
+  // Pending leave count for supervisors (action required)
+  const pendingLeaveCount = useMemo(
+    () => (isSupervisor ? pendingLeaveRequests.length : 0),
+    [isSupervisor, pendingLeaveRequests.length]
+  );
+
+  // Count unread notifications (localStorage-based + unread notes + pending leave for supervisors)
   const unreadCount = useMemo(() => {
     if (!hasHydrated) return 0;
-    return notifications.filter((n) => !readIds.has(n.id)).length;
-  }, [notifications, readIds, hasHydrated]);
+    const localUnread = notifications.filter(
+      (n) => !readIds.has(n.id) && n.category !== "staff-note" && n.category !== "leave-pending"
+    ).length;
+    return localUnread + unreadNotesCount + pendingLeaveCount;
+  }, [notifications, readIds, hasHydrated, unreadNotesCount, pendingLeaveCount]);
 
   // Count alerts
   const alertCount = notifications.filter((n) => n.type === "alert").length;
@@ -334,8 +483,15 @@ export function NotificationsDropdown() {
       
       // Update state
       setReadIds(new Set(Object.keys(newReadEntries)));
+
+      // Mark unread staff notes as read in DB
+      receivedNotes
+        .filter((n) => !n.read && n._id)
+        .forEach((n) => {
+          markNoteRead.mutate(n._id!);
+        });
     }
-  }, [notifications, readIds, currentUserId, storageKey]);
+  }, [notifications, readIds, currentUserId, storageKey, receivedNotes, markNoteRead]);
 
   // Handle mouse enter - keep dropdown open (clear close timeout)
   const handleMouseEnter = useCallback(() => {
@@ -402,15 +558,10 @@ export function NotificationsDropdown() {
             aria-label="Notifications"
           >
             <BellIcon className="h-4 w-4" aria-hidden="true" />
-            {/* Show badge for superadmin with unread count, or alert count for others */}
-            {isSuperAdmin && unreadCount > 0 && (
+            {/* Show badge for unread count (notes + other notifications) */}
+            {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                 {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-            {!isSuperAdmin && alertCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                {alertCount > 9 ? "9+" : alertCount}
               </span>
             )}
             <span className="sr-only">Notifications</span>
@@ -437,21 +588,133 @@ export function NotificationsDropdown() {
           {notifications.length > 0 ? (
             <div className="space-y-1 p-1">
               {notifications.map((notification) => {
-                const read = isRead(notification.id);
+                const isNoteItem = notification.category === "staff-note";
+                const noteObj = isNoteItem
+                  ? receivedNotes.find(
+                      (n) => `staff-note-${n._id}` === notification.id
+                    )
+                  : null;
+                const unread = isNoteItem
+                  ? noteObj && !noteObj.read
+                  : !isRead(notification.id) && isSuperAdmin;
+
+                if (isNoteItem) {
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-muted/50 ${
+                        noteObj && !noteObj.read
+                          ? "bg-blue-50/50 dark:bg-blue-950/20"
+                          : ""
+                      } ${unread ? "border-l-2 border-primary" : ""}`}
+                    >
+                      <Avatar className="h-8 w-8 shrink-0 border border-background">
+                        <AvatarImage src={notification.fromStaffAvatar || ""} alt={notification.fromStaffName} />
+                        <AvatarFallback
+                          className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat"
+                        >
+                          {getInitials(notification.fromStaffName || "?")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={`text-sm leading-tight ${
+                              unread ? "font-semibold" : "font-medium"
+                            }`}
+                          >
+                            {notification.fromStaffName}
+                          </p>
+                          {unread && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground break-words mt-0.5">
+                          {notification.description}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                          {formatTimeAgo(notification.time)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (notification.category === "leave-pending" && notification.leaveRequestId) {
+                  const isReviewing = reviewLeaveRequest.isPending;
+                  return (
+                    <div
+                      key={notification.id}
+                      className="flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-muted/50 bg-amber-50/50 dark:bg-amber-950/20 border-l-2 border-amber-500"
+                    >
+                      <div className="mt-0.5 shrink-0">{notification.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground break-words mt-0.5">
+                          {notification.description}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                          {formatTimeAgo(notification.time)}
+                        </p>
+                        <div className="flex gap-1.5 mt-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 text-xs flex-1"
+                            disabled={isReviewing}
+                            onClick={() =>
+                              reviewLeaveRequest.mutate({
+                                id: notification.leaveRequestId!,
+                                status: "APPROVED",
+                              })
+                            }
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs flex-1 border-destructive text-destructive hover:bg-destructive/10"
+                            disabled={isReviewing}
+                            onClick={() =>
+                              reviewLeaveRequest.mutate({
+                                id: notification.leaveRequestId!,
+                                status: "REJECTED",
+                              })
+                            }
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={notification.id}
                     className={`flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-muted/50 ${
-                      notification.type === "alert" ? "bg-amber-50/50 dark:bg-amber-950/20" : ""
-                    } ${!read && isSuperAdmin ? "border-l-2 border-primary" : ""}`}
+                      notification.type === "alert"
+                        ? "bg-amber-50/50 dark:bg-amber-950/20"
+                        : ""
+                    } ${unread ? "border-l-2 border-primary" : ""}`}
                   >
                     <div className="mt-0.5 shrink-0">{notification.icon}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm leading-tight ${!read && isSuperAdmin ? "font-semibold" : "font-medium"}`}>
+                        <p
+                          className={`text-sm leading-tight ${
+                            unread ? "font-semibold" : "font-medium"
+                          }`}
+                        >
                           {notification.title}
                         </p>
-                        {!read && isSuperAdmin && (
+                        {unread && (
                           <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                         )}
                       </div>
@@ -481,13 +744,11 @@ export function NotificationsDropdown() {
             <DropdownMenuSeparator />
             <div className="p-2 flex items-center justify-between">
               <p className="text-[10px] text-muted-foreground">
-                {notifications.length} activit{notifications.length === 1 ? "y" : "ies"} from last 7 days
+                {notifications.length} activit{notifications.length === 1 ? "y" : "ies"}
               </p>
-              {isSuperAdmin && (
-                <p className="text-[10px] text-muted-foreground">
-                  {unreadCount > 0 ? `${unreadCount} unread` : "✓ All read"}
-                </p>
-              )}
+              <p className="text-[10px] text-muted-foreground">
+                {unreadCount > 0 ? `${unreadCount} unread` : "All read"}
+              </p>
             </div>
           </>
         )}

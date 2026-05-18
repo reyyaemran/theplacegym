@@ -16,7 +16,8 @@ import { useState, useEffect } from "react";
 import { useUpdateStaff } from "@/hooks/use-staff";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, Eye, EyeOff, Users, Calendar, FileText, Settings as SettingsIcon, Edit, X } from "lucide-react";
+import { Lock, Eye, EyeOff, Users, Calendar, CalendarClock, FileText, Settings as SettingsIcon, Edit, X, ClipboardList, UserCircle } from "lucide-react";
+import { DEFAULT_PERMISSIONS_BY_DEPARTMENT } from "@/types/staff";
 
 interface StaffSettingsDialogProps {
   open: boolean;
@@ -36,6 +37,18 @@ const PERMISSIONS: { id: StaffPermission; label: string; description: string; ic
     label: "Manage Roster", 
     description: "View and edit staff schedules.",
     icon: <Calendar className="h-4 w-4 text-green-500" />
+  },
+  { 
+    id: "manage_appointments", 
+    label: "Manage Appointments", 
+    description: "Create, view, and manage client appointments.",
+    icon: <CalendarClock className="h-4 w-4 text-teal-500" />
+  },
+  { 
+    id: "manage_program", 
+    label: "Manage Program", 
+    description: "Create workout programs and meal plans.",
+    icon: <ClipboardList className="h-4 w-4 text-cyan-500" />
   },
   { 
     id: "manage_staff", 
@@ -180,7 +193,7 @@ export function StaffSettingsDialog({ open, onOpenChange, staff }: StaffSettings
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
                     className="h-8 text-xs font-mono pr-8"
-                    placeholder="Enter Password"
+                    placeholder="Password"
                     disabled={!isEditingCredentials}
                   />
                   <Button
@@ -210,7 +223,22 @@ export function StaffSettingsDialog({ open, onOpenChange, staff }: StaffSettings
           {/* Permissions */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Feature Permissions</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">Feature Permissions</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] text-muted-foreground px-2"
+                  onClick={() => {
+                    const defaults = DEFAULT_PERMISSIONS_BY_DEPARTMENT[staff.department] || ["view_dashboard"];
+                    setPermissions(defaults);
+                    toast.info(`Permissions reset to ${staff.department} defaults`);
+                  }}
+                  disabled={!loginEnabled}
+                >
+                  Reset to Defaults
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Role:</span>
                 <select 

@@ -35,7 +35,7 @@ export function StaffFilters({
         onFocus={() => setIsSearchFocused(true)}
         onBlur={() => setIsSearchFocused(false)}
         className={cn(
-          "pl-9 transition-all duration-200 placeholder:text-xs",
+          "pl-9 transition-all duration-200 placeholder:text-sm",
           !isSearchFocused && !hasSearchValue && "pr-3"
         )}
       />

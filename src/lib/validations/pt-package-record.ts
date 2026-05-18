@@ -14,7 +14,11 @@ export const ptPackageRecordSchema = z.object({
   amount: z.number().min(0, "Amount must be positive"),
   paymentRemark: z.string().optional(),
   assignedStaffName: z.string().optional(),
+  assignedStaffId: z.string().optional(),
   issuedBy: z.string().optional(),
+  usedSessions: z.number().int().min(0).optional(),
+  remainingSessions: z.number().int().min(0).optional(),
+  ptContract: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

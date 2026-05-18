@@ -11,6 +11,7 @@ export function useMembers(filters?: {
 }) {
   return useQuery({
     queryKey: ["members", filters],
+    staleTime: 60 * 1000, // 1 min
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters?.search) params.append("search", filters.search);

@@ -529,7 +529,7 @@ export function RosterPage() {
     <div className="flex flex-col gap-6 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">ROSTER</h1>
+        <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">ROSTER</h1>
       </div>
 
       {/* Stats Cards — Overall or Selected Staff Detail */}
@@ -550,7 +550,7 @@ export function RosterPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                 {overallStats.totalWorkingDays}
               </div>
             </CardContent>
@@ -566,7 +566,7 @@ export function RosterPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                 {overallStats.totalLeaveUsage}
               </div>
             </CardContent>
@@ -582,7 +582,7 @@ export function RosterPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+              <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                 {overallStats.totalLeaveBalance}
               </div>
             </CardContent>
@@ -591,14 +591,14 @@ export function RosterPage() {
       )}
 
       {/* Roster Table */}
-      <div className="rounded-lg border bg-card w-full flex flex-col h-[calc(100vh-380px)] overflow-hidden">
-        <div className="border-b p-4 flex items-center justify-between gap-4 shrink-0">
+      <div className="rounded-lg border bg-card w-full flex flex-col min-h-[300px] h-[calc(100vh-12rem)] sm:h-[calc(100vh-380px)] overflow-hidden">
+        <div className="border-b p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 shrink-0">
           <div
             className={cn(
-              "relative transition-all duration-200 ease-in-out",
+              "relative transition-all duration-200 ease-in-out min-w-0",
               isSearchFocused || searchQuery.length > 0
                 ? "w-full lg:w-80"
-                : "w-40 lg:w-60"
+                : "w-full sm:w-40 lg:w-60"
             )}
           >
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
@@ -609,17 +609,17 @@ export function RosterPage() {
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
               className={cn(
-                "pl-9 transition-all duration-200 placeholder:text-xs",
+                "pl-9 transition-all duration-200 placeholder:text-sm h-10",
                 !isSearchFocused && !searchQuery.length && "pr-3"
               )}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0">
             <Select
               value={selectedMonth.toString()}
               onValueChange={(value) => setSelectedMonth(parseInt(value))}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full min-w-[100px] sm:w-[130px] h-10">
                 <SelectValue placeholder="Select month" />
               </SelectTrigger>
               <SelectContent>
@@ -634,7 +634,7 @@ export function RosterPage() {
               value={selectedYear.toString()}
               onValueChange={(value) => setSelectedYear(parseInt(value))}
             >
-              <SelectTrigger className="w-[90px]">
+              <SelectTrigger className="w-full min-w-[70px] sm:w-[90px] h-10">
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
@@ -694,7 +694,7 @@ export function RosterPage() {
                         >
                           <Avatar className="h-8 w-8 shrink-0 border-2 border-background shadow-sm">
                             <AvatarImage src={staff.avatar} alt={staff.name} />
-                            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                               {getInitials(staff.name)}
                             </AvatarFallback>
                           </Avatar>
@@ -882,7 +882,7 @@ function calcLeaveStats(records: RosterRecord[]): LeaveStats {
 function SelectedStaffStats({ staff, onClose }: { staff: Staff; onClose: () => void }) {
   const currentYear = new Date().getFullYear();
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const currentMonth = today.getMonth() + 1;
   const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}-`;
 
@@ -989,7 +989,7 @@ function SelectedStaffStats({ staff, onClose }: { staff: Staff; onClose: () => v
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
             <AvatarImage src={staff.avatar} alt={staff.name} />
-            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
               {getInitials(staff.name)}
             </AvatarFallback>
           </Avatar>
@@ -1107,7 +1107,7 @@ function MiniStat({ icon, label, value, sub, badges }: {
         {icon}
         <span className="truncate">{label}</span>
       </div>
-      <div className="text-xl font-bold font-mono tracking-tight">{value}</div>
+      <div className="text-xl font-bold font-mono tracking-tight tabular-nums">{value}</div>
       {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
       {badges && badges.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-0.5">
@@ -1151,12 +1151,12 @@ function LeaveBalanceItem({ icon, label, used, total, balance, color }: {
       <div className="flex items-baseline gap-1.5">
         {balance !== null ? (
           <>
-            <span className={`text-xl font-bold font-mono ${c.text}`}>{balance}</span>
+            <span className={`text-xl font-bold font-mono tabular-nums ${c.text}`}>{balance}</span>
             <span className="text-[10px] text-muted-foreground">remaining</span>
           </>
         ) : (
           <>
-            <span className={`text-xl font-bold font-mono ${c.text}`}>{used}</span>
+            <span className={`text-xl font-bold font-mono tabular-nums ${c.text}`}>{used}</span>
             <span className="text-[10px] text-muted-foreground">days used</span>
           </>
         )}

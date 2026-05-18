@@ -388,11 +388,11 @@ export function ManagePTPackageDialog({
         <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Current PT Package</span>
-            <Badge variant="outline" className="font-black italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <Badge variant="outline" className="font-black font-montserrat">
               {activePackage.ptPackageName}
             </Badge>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Start Date:</span>
               <p className="font-mono font-medium">{format(currentStart, "MMM dd, yyyy")}</p>
@@ -423,7 +423,7 @@ export function ManagePTPackageDialog({
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="extension" className="flex items-center gap-1 text-xs">
               <CalendarPlus className="h-3.5 w-3.5" />
               Extension
@@ -445,7 +445,7 @@ export function ManagePTPackageDialog({
           <TabsContent value="extension" className="space-y-4 mt-4">
             <Form {...extensionForm}>
               <form onSubmit={extensionForm.handleSubmit(onExtensionSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={extensionForm.control}
                     name="extensionDays"
@@ -497,7 +497,7 @@ export function ManagePTPackageDialog({
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                             <Calendar
                               mode="single"
                               selected={field.value}
@@ -526,7 +526,7 @@ export function ManagePTPackageDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for extension..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -588,7 +588,7 @@ export function ManagePTPackageDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -615,7 +615,7 @@ export function ManagePTPackageDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for changing start date..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -697,7 +697,7 @@ export function ManagePTPackageDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for cutting sessions..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -779,7 +779,7 @@ export function ManagePTPackageDialog({
                     <FormItem>
                       <FormLabel>Reason (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Reason for undoing sessions..." {...field} />
+                        <Input placeholder="Reason..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

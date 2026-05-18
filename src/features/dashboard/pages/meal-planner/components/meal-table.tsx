@@ -159,7 +159,7 @@ export function MealTable({ title, meals, onChange }: MealTableProps) {
                         onBlur={(e) =>
                           handleFoodSelect(meal.id, e.target.value)
                         }
-                        placeholder="Select or type food"
+                        placeholder="Food"
                         className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-ring/50"
                       />
                     </td>

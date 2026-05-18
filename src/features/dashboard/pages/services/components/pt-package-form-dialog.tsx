@@ -136,10 +136,9 @@ export function PTPackageFormDialog({
                   <FormLabel>Name (for PT Package Badges)</FormLabel>
                       <FormControl>
                     <Input
-                      placeholder="e.g., 10"
+                      placeholder="e.g. 10"
                       {...field}
                       className="font-mono uppercase italic"
-                      style={{ fontFamily: 'Montserrat, sans-serif' }}
                     />
                       </FormControl>
                       <FormMessage />
@@ -147,7 +146,7 @@ export function PTPackageFormDialog({
                   )}
                 />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                 name="validityDays"
@@ -193,7 +192,7 @@ export function PTPackageFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="price"
@@ -255,7 +254,7 @@ export function PTPackageFormDialog({
                   <FormLabel>Description</FormLabel>
                       <FormControl>
                     <Textarea
-                      placeholder="Package description..."
+                      placeholder="Description"
                       className="resize-none"
                       rows={3}
                           {...field}

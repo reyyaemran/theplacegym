@@ -13,6 +13,7 @@ export function useAppointments(filters?: {
 }) {
   return useQuery({
     queryKey: ["appointments", filters],
+    staleTime: 30 * 1000, // 30s - appointments update more often
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters?.trainerId) params.append("trainerId", filters.trainerId);

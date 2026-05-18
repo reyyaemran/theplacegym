@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { getDatabase } from "@/lib/mongodb";
 import { Member } from "@/features/dashboard/pages/members/types/member";
 import { logger } from "@/lib/logger";
@@ -13,44 +14,97 @@ export async function GET(request: NextRequest) {
   try {
     let members: Member[] = [];
 
-    try {
-      const db = await getDatabase();
-      const collection = db.collection("members");
+    const db = await getDatabase();
+    const collection = db.collection("members");
+    const searchParams = request.nextUrl.searchParams;
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
+    const query: MemberQuery = {};
+    if (status) query.status = status;
 
-      const searchParams = request.nextUrl.searchParams;
-      const search = searchParams.get("search");
-      const status = searchParams.get("status");
+    // For PT/PTS: return only members assigned to this trainer (have PT packages with assignedStaffName/assignedStaffId)
+    let memberIdFilter: (string | number)[] | null = null;
+    const sessionCookie = request.cookies.get("session");
+    if (sessionCookie?.value) {
+      try {
+        const session = JSON.parse(sessionCookie.value) as {
+          department?: string;
+          name?: string;
+          staffId?: string;
+        };
+        const department = session.department;
+        const isTrainer = department === "PT" || department === "PTS";
 
-      const query: MemberQuery = {};
-      if (status) query.status = status;
-
-      const rawMembers = await collection.find(query as any).sort({ dateJoined: -1 }).toArray();
-
-      // Transform customerNumber to memberNumber for backward compatibility
-      members = rawMembers.map((member: any) => ({
-        ...member,
-        memberNumber: member.memberNumber || member.customerNumber,
-        // Remove customerNumber if it exists to avoid confusion
-        ...(member.customerNumber && !member.memberNumber ? {} : {}),
-      }));
-
-      // Apply search filter if provided
-      if (search) {
-        const searchLower = search.toLowerCase();
-        members = members.filter((member) => {
-          const searchableFields = [
-            member.memberNumber,
-            member.fullName,
-            member.email || "",
-            member.company || "",
-            member.location || "",
-          ].map((field) => field.toLowerCase());
-
-          return searchableFields.some((field) => field.includes(searchLower));
-        });
+        if (isTrainer) {
+          const ptPackagesCollection = db.collection("pt-packages");
+          const trainerName = session.name?.trim();
+          const trainerId = session.staffId != null ? String(session.staffId) : undefined;
+          const conditions: Record<string, unknown>[] = [];
+          if (trainerName) {
+            const escaped = trainerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            conditions.push({
+              assignedStaffName: { $exists: true, $nin: [null, ""], $regex: new RegExp(`^${escaped}$`, "i") },
+            });
+          }
+          if (trainerId) {
+            const idConditions: Record<string, unknown>[] = [{ assignedStaffId: trainerId }];
+            if (ObjectId.isValid(trainerId) && new ObjectId(trainerId).toString() === trainerId) {
+              idConditions.push({ assignedStaffId: new ObjectId(trainerId) });
+            }
+            conditions.push(idConditions.length > 1 ? { $or: idConditions } : idConditions[0]!);
+          }
+          const packageQuery = conditions.length > 1 ? { $or: conditions } : conditions.length === 1 ? conditions[0]! : null;
+          if (packageQuery) {
+            const trainerPackages = await ptPackagesCollection.find(packageQuery as any).toArray();
+            const memberIdSet = new Set<string | number>();
+            for (const pkg of trainerPackages) {
+              const id = pkg.memberId;
+              if (id != null && id !== "") {
+                memberIdSet.add(id);
+                if (typeof id === "string" && /^\d+$/.test(id)) memberIdSet.add(parseInt(id, 10));
+              }
+            }
+            memberIdFilter = [...memberIdSet];
+          } else {
+            memberIdFilter = [];
+          }
+        }
+      } catch {
+        // Ignore session parse errors
       }
-    } catch (error: unknown) {
-      throw error;
+    }
+
+    const findQuery: Record<string, unknown> = { ...query };
+    if (memberIdFilter !== null) {
+      if (memberIdFilter.length === 0) {
+        return NextResponse.json([]);
+      }
+      findQuery.$or = [
+        { memberNumber: { $in: memberIdFilter } },
+        { customerNumber: { $in: memberIdFilter } },
+      ];
+    }
+
+    const rawMembers = await collection.find(findQuery).sort({ dateJoined: -1 }).toArray() as any[];
+
+    members = rawMembers.map((member: any) => ({
+      ...member,
+      id: member.id || member._id?.toString(),
+      memberNumber: member.memberNumber || member.customerNumber,
+    }));
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      members = members.filter((member) => {
+        const searchableFields = [
+          member.memberNumber,
+          member.fullName,
+          member.email || "",
+          member.company || "",
+          member.location || "",
+        ].map((field) => String(field || "").toLowerCase());
+        return searchableFields.some((field) => field.includes(searchLower));
+      });
     }
 
     return NextResponse.json(members);

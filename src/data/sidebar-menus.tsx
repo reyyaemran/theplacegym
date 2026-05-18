@@ -1,21 +1,22 @@
 import {
   LayoutDashboard,
   Users,
-  Settings2,
-  TrendingUp,
   CalendarClock,
   UserCircle,
+  UserCheck,
   FileText,
   Calendar,
   Sparkles,
   ClipboardList,
-  } from "lucide-react";
+} from "lucide-react";
 import { StaffPermission } from "@/types/staff";
 
 export const sidebarMenus = {
+  // These are fallback placeholders only — the session provider overrides
+  // them with the real signed-in staff (see nav-user.tsx).
   user: {
-    name: "James",
-    email: "james@example.com",
+    name: "Loading…",
+    email: "",
     avatar: "/avatars/avatar.png",
   },
   navMain: [
@@ -36,13 +37,13 @@ export const sidebarMenus = {
       title: "Appointments",
       url: "/dashboard/appointments",
       icon: CalendarClock,
-      requiredPermission: "manage_roster" as StaffPermission, // Using manage_roster for appointments as well
+      requiredPermission: "manage_appointments" as StaffPermission,
     },
     {
       title: "Program",
       url: "/dashboard/program",
       icon: ClipboardList,
-      requiredPermission: "manage_roster" as StaffPermission,
+      requiredPermission: "manage_program" as StaffPermission,
     },
     {
       title: "Roster",
@@ -55,10 +56,18 @@ export const sidebarMenus = {
       url: "/dashboard/members",
       icon: UserCircle,
       requiredPermission: "manage_members" as StaffPermission,
+      hideForDepartments: ["PT", "PTS"],
     },
     {
-      title: "Services",
-      url: "/dashboard/services", // This points to the "All Packages" page
+      title: "Active Clients",
+      url: "/dashboard/active-clients",
+      icon: UserCheck,
+      requiredPermission: "manage_members" as StaffPermission,
+      showOnlyForDepartments: ["PT", "PTS"],
+    },
+    {
+      title: "Packages",
+      url: "/dashboard/services", // route name kept to avoid breaking deep links
       icon: Sparkles,
       requiredPermission: "view_reports" as StaffPermission,
     },
@@ -80,5 +89,4 @@ export const sidebarMenus = {
     },
   ],
   navSecondary: [],
-  workspaces: [],
 };

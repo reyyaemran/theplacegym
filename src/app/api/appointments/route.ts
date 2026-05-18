@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { Appointment } from "@/types/appointment";
-import { mockAppointments } from "@/lib/mock-data";
 import { logger } from "@/lib/logger";
 import { appointmentSchema } from "@/lib/validations/appointment";
+
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
 
 interface AppointmentQuery {
   trainerId?: string;
@@ -38,58 +44,34 @@ async function generateAppointmentNumber(db: any): Promise<string> {
 
 export async function GET(request: NextRequest) {
   try {
-    let appointments: Appointment[] = [];
-
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("appointments");
-
-      const searchParams = request.nextUrl.searchParams;
-      const trainerId = searchParams.get("trainerId");
-      const clientId = searchParams.get("clientId");
-      const status = searchParams.get("status");
-      const date = searchParams.get("date");
-
-      const query: any = {};
-      if (trainerId) query.staffId = trainerId;
-      if (clientId) query.clientId = clientId;
-      if (status) query.status = status;
-      if (date) query.date = date;
-
-      appointments = await collection.find(query as any).sort({ date: -1, startTime: 1 }).toArray() as unknown as Appointment[];
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check for MongoDB connection errors or missing URI
-      if (errorMessage.includes("MONGODB_URI") || errorMessage.includes("MongoClient") || errorMessage.includes("connection")) {
-        logger.info("Using mock appointments data (MongoDB not configured or connection failed)");
-        appointments = [...mockAppointments];
-
-        // Apply filters to mock data
-        const searchParams = request.nextUrl.searchParams;
-        const trainerId = searchParams.get("trainerId");
-        const clientId = searchParams.get("clientId");
-        const status = searchParams.get("status");
-        const date = searchParams.get("date");
-
-        if (trainerId) {
-          appointments = appointments.filter((a) => a.staffId === trainerId);
-        }
-        if (clientId) {
-          appointments = appointments.filter((a) => a.clientId === clientId);
-        }
-        if (status) {
-          appointments = appointments.filter((a) => a.status === status);
-        }
-        if (date) {
-          appointments = appointments.filter((a) => {
-            const appointmentDate = new Date(a.date).toISOString().split("T")[0];
-            return appointmentDate === date;
-          });
-        }
-      } else {
-        throw error;
-      }
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("appointments GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("appointments");
+
+    const searchParams = request.nextUrl.searchParams;
+    const trainerId = searchParams.get("trainerId");
+    const clientId = searchParams.get("clientId");
+    const status = searchParams.get("status");
+    const date = searchParams.get("date");
+
+    const query: any = {};
+    if (trainerId) query.staffId = trainerId;
+    if (clientId) query.clientId = clientId;
+    if (status) query.status = status;
+    if (date) query.date = date;
+
+    const rawAppointments = await collection.find(query as any).sort({ date: -1, startTime: 1 }).toArray();
+    const appointments = rawAppointments.map((apt: any) => ({
+      ...apt,
+      _id: apt._id?.toString(),
+    })) as Appointment[];
 
     return NextResponse.json(appointments);
   } catch (error: unknown) {
@@ -131,50 +113,33 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validationResult.data;
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("appointments");
-      
-      // Generate unique appointment number
-      const appointmentNumber = await generateAppointmentNumber(db);
-      
-      const appointment: Omit<Appointment, "_id"> = {
-        ...validatedData,
-        appointmentNumber,
-        date: validatedData.date,
-        createdAt: new Date(),
-      };
-      
-      const result = await collection.insertOne(appointment as any);
-      const createdAppointment: Appointment = {
-        _id: result.insertedId.toString(),
-        ...appointment,
-      };
-      return NextResponse.json(createdAppointment, { status: 201 });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        logger.info("Using mock mode for appointment creation");
-        
-        // Generate mock appointment number
-        const year = new Date().getFullYear();
-        const mockNumber = `APT-${year}-${Date.now().toString().slice(-5)}`;
-        
-        const appointment: Omit<Appointment, "_id"> = {
-          ...validatedData,
-          appointmentNumber: mockNumber,
-          date: validatedData.date,
-          createdAt: new Date(),
-        };
-        
-        const mockAppointment: Appointment = {
-          _id: `apt-${Date.now()}`,
-          ...appointment,
-        };
-        return NextResponse.json(mockAppointment, { status: 201 });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("appointments POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("appointments");
+
+    // Generate unique appointment number
+    const appointmentNumber = await generateAppointmentNumber(db);
+
+    const appointment: Omit<Appointment, "_id"> = {
+      ...validatedData,
+      appointmentNumber,
+      date: validatedData.date,
+      createdAt: new Date(),
+    };
+
+    const result = await collection.insertOne(appointment as any);
+    const createdAppointment: Appointment = {
+      _id: result.insertedId.toString(),
+      ...appointment,
+    };
+    return NextResponse.json(createdAppointment, { status: 201 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(

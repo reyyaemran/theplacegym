@@ -1,10 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { Staff } from "@/types/staff";
-import { mockStaff } from "@/lib/mock-data";
 import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { staffSchema } from "@/lib/validations/staff";
+import { hashPassword, isHashed } from "@/lib/password";
+
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
+async function findStaffByAnyId(collection: any, id: string) {
+  // Try string ID first (our DB stores ObjectId-as-string and plain strings).
+  let staff = await collection.findOne({ _id: id });
+  if (!staff) {
+    try {
+      staff = await collection.findOne({ _id: new ObjectId(id) });
+    } catch {
+      /* not a valid ObjectId — fine */
+    }
+  }
+  if (!staff) {
+    staff = await collection.findOne({ staffID: id });
+  }
+  return staff;
+}
 
 export async function GET(
   request: NextRequest,
@@ -12,64 +35,27 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("staff");
-      
-      // Try string ID first (since MongoDB stores IDs as strings in our case)
-      let staff = await collection.findOne({ _id: id } as any);
-      
-      // If not found with string ID, try ObjectId (for compatibility)
-      if (!staff) {
-        try {
-          staff = await collection.findOne({ _id: new ObjectId(id) } as any);
-        } catch (objectIdError) {
-          // ObjectId conversion failed, continue with string search
-        }
-      }
-      
-      // If still not found, try searching by staffID
-      if (!staff) {
-        staff = await collection.findOne({ staffID: id } as any);
-      }
-      
-      if (!staff) {
-        return NextResponse.json(
-          { error: "Staff not found" },
-          { status: 404 }
-        );
-      }
-      
-      return NextResponse.json(staff);
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        // Use mock data - try _id first, then staffID
-        let staff = mockStaff.find((s) => s._id === id);
-        if (!staff) {
-          staff = mockStaff.find((s) => s.staffID === id);
-        }
-        if (!staff) {
-          return NextResponse.json(
-            { error: "Staff not found" },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json(staff);
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("staff [id] GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const staff = await findStaffByAnyId(db.collection("staff"), id);
+    if (!staff) {
+      return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+    }
+    return NextResponse.json(staff);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error("Error fetching staff", errorMessage instanceof Error ? errorMessage : undefined, {
       endpoint: `/api/staff/${id}`,
       method: "GET",
     });
-    return NextResponse.json(
-      { error: "Failed to fetch staff" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch staff" }, { status: 500 });
   }
 }
 
@@ -81,9 +67,7 @@ export async function PUT(
   try {
     const body = await request.json();
 
-    // Validate request body with Zod (partial validation for updates)
     const validationResult = staffSchema.partial().safeParse(body);
-
     if (!validationResult.success) {
       logger.warn("Invalid staff update data", {
         errors: validationResult.error.errors,
@@ -99,162 +83,111 @@ export async function PUT(
     }
 
     const validatedData = validationResult.data;
-    
-    // Process staffID if provided: enforce 6-digit numeric format
+
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("staff [id] PUT: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
+    const collection = db.collection("staff");
+
+    // Process staffID if provided
     let processedStaffID = validatedData.staffID;
     if (processedStaffID !== undefined) {
-      // Remove any whitespace
       processedStaffID = processedStaffID.trim();
-      
-      // Validate that it's numeric only
+
       if (processedStaffID && !/^\d+$/.test(processedStaffID)) {
         return NextResponse.json(
           { error: "Staff ID must be numeric only" },
           { status: 400 }
         );
       }
-      
+
       if (processedStaffID) {
-        // Pad to 6 digits with leading zeros
         processedStaffID = processedStaffID.padStart(6, "0");
-        
-        // Ensure it doesn't exceed 6 digits
+
         if (processedStaffID.length > 6) {
           return NextResponse.json(
             { error: "Staff ID must be 6 digits or less" },
             { status: 400 }
           );
         }
-        
-        // Check for uniqueness (excluding current staff)
-        try {
-          const db = await getDatabase();
-          const collection = db.collection("staff");
-          
-          // Find current staff to exclude from uniqueness check
-          let currentStaff = await collection.findOne({ _id: id } as any);
-          if (!currentStaff) {
-            try {
-              currentStaff = await collection.findOne({ _id: new ObjectId(id) } as any);
-            } catch (objectIdError) {
-              // ObjectId conversion failed, continue
-            }
-          }
-          if (!currentStaff) {
-            currentStaff = await collection.findOne({ staffID: id } as any);
-          }
-          
-          // Check if staffID is already used by another staff member
-          const existing = await collection.findOne({ 
-            staffID: processedStaffID,
-            _id: { $ne: currentStaff?._id } as any
-          } as any);
-          
-          if (existing) {
-            return NextResponse.json(
-              { error: "Staff ID already exists" },
-              { status: 400 }
-            );
-          }
-        } catch (dbError: unknown) {
-          // If MongoDB is not available, skip uniqueness check (mock mode)
-          const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-          if (!errorMessage.includes("MONGODB_URI")) {
-            throw dbError;
-          }
+
+        // Uniqueness check excluding current staff
+        const currentStaff = await findStaffByAnyId(collection, id);
+        const existing = await collection.findOne({
+          staffID: processedStaffID,
+          _id: { $ne: currentStaff?._id } as any,
+        } as any);
+
+        if (existing) {
+          return NextResponse.json(
+            { error: "Staff ID already exists" },
+            { status: 400 }
+          );
         }
       }
     }
-    
-    // Include documents from body (now included in schema, but ensure it's preserved)
+
+    // Hash password if it's being updated and isn't already hashed
+    let processedPassword = validatedData.password;
+    if (typeof processedPassword === "string" && processedPassword.length > 0 && !isHashed(processedPassword)) {
+      processedPassword = hashPassword(processedPassword);
+    }
+
     const updateData = {
       ...validatedData,
-      // Use processed staffID if it was provided
       ...(processedStaffID !== undefined && { staffID: processedStaffID }),
-      // Preserve documents from body if present
+      ...(processedPassword !== undefined && { password: processedPassword }),
       documents: body.documents !== undefined ? body.documents : validatedData.documents,
       updatedAt: new Date(),
     } as Partial<Staff>;
-    
-    try {
-      const db = await getDatabase();
-      const collection = db.collection("staff");
 
-      // Try string ID first (since MongoDB stores IDs as strings in our case)
-      let result = await collection.updateOne(
-        { _id: id } as any,
-        { $set: updateData }
-      );
+    // Try string ID first
+    let result = await collection.updateOne(
+      { _id: id } as any,
+      { $set: updateData }
+    );
 
-      // If not found with string ID, try ObjectId (for compatibility)
-      if (result.matchedCount === 0) {
-        try {
-          result = await collection.updateOne(
-            { _id: new ObjectId(id) } as any,
-            { $set: updateData }
-          );
-        } catch (objectIdError) {
-          // ObjectId conversion failed, continue
-        }
-      }
-
-      // If still not found, try searching by staffID
-      if (result.matchedCount === 0) {
+    if (result.matchedCount === 0) {
+      try {
         result = await collection.updateOne(
-          { staffID: id } as any,
+          { _id: new ObjectId(id) } as any,
           { $set: updateData }
         );
+      } catch {
+        /* not a valid ObjectId — fine */
       }
-
-      if (result.matchedCount === 0) {
-        return NextResponse.json(
-          { error: "Staff not found" },
-          { status: 404 }
-        );
-      }
-
-      // Fetch updated document - try string ID first, then staffID
-      let updated = await collection.findOne({ _id: id } as any);
-      if (!updated) {
-        try {
-          updated = await collection.findOne({ _id: new ObjectId(id) } as any);
-        } catch (objectIdError) {
-          // ObjectId conversion failed, continue
-        }
-      }
-      if (!updated) {
-        updated = await collection.findOne({ staffID: id } as any);
-      }
-      return NextResponse.json(updated);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        // Mock mode - just return updated data
-        const staff = mockStaff.find((s) => s._id === id);
-        if (!staff) {
-          return NextResponse.json(
-            { error: "Staff not found" },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json({ ...staff, ...updateData });
-      }
-      throw error;
     }
+
+    if (result.matchedCount === 0) {
+      result = await collection.updateOne(
+        { staffID: id } as any,
+        { $set: updateData }
+      );
+    }
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+    }
+
+    const updated = await findStaffByAnyId(collection, id);
+    return NextResponse.json(updated);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
       "Error updating staff",
       errorMessage instanceof Error ? errorMessage : undefined,
       {
-      endpoint: `/api/staff/${id}`,
-      method: "PUT",
+        endpoint: `/api/staff/${id}`,
+        method: "PUT",
       }
     );
-    return NextResponse.json(
-      { error: "Failed to update staff" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update staff" }, { status: 500 });
   }
 }
 
@@ -264,54 +197,40 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("staff");
-      
-      // Try string ID first (since MongoDB stores IDs as strings in our case)
-      let result = await collection.deleteOne({ _id: id } as any);
-      
-      // If not found with string ID, try ObjectId (for compatibility)
-      if (result.deletedCount === 0) {
-        try {
-          result = await collection.deleteOne({ _id: new ObjectId(id) } as any);
-        } catch (objectIdError) {
-          // ObjectId conversion failed, continue
-        }
-      }
-      
-      // If still not found, try searching by staffID
-      if (result.deletedCount === 0) {
-        result = await collection.deleteOne({ staffID: id } as any);
-      }
-      
-      if (result.deletedCount === 0) {
-        return NextResponse.json(
-          { error: "Staff not found" },
-          { status: 404 }
-        );
-      }
-      
-      return NextResponse.json({ success: true });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        // Mock mode - just return success
-        return NextResponse.json({ success: true });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("staff [id] DELETE: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("staff");
+
+    let result = await collection.deleteOne({ _id: id } as any);
+    if (result.deletedCount === 0) {
+      try {
+        result = await collection.deleteOne({ _id: new ObjectId(id) } as any);
+      } catch {
+        /* not a valid ObjectId — fine */
+      }
+    }
+    if (result.deletedCount === 0) {
+      result = await collection.deleteOne({ staffID: id } as any);
+    }
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error("Error deleting staff", errorMessage instanceof Error ? errorMessage : undefined, {
       endpoint: `/api/staff/${id}`,
       method: "DELETE",
     });
-    return NextResponse.json(
-      { error: "Failed to delete staff" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete staff" }, { status: 500 });
   }
 }
-

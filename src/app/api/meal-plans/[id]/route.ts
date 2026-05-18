@@ -5,6 +5,13 @@ import { logger } from "@/lib/logger";
 import { ObjectId } from "mongodb";
 import { mealPlanSchema } from "@/lib/validations/meal-plan";
 
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
+
 function toMealPlan(doc: any): MealPlan {
   const id = doc._id?.toString?.() ?? doc.id;
   return {
@@ -28,7 +35,15 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("meal-plans/[id] GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("meal-plans");
 
     const doc = await findMealPlan(collection, id);
@@ -42,17 +57,6 @@ export async function GET(
 
     return NextResponse.json(toMealPlan(doc));
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (
-      errorMessage.includes("MONGODB_URI") ||
-      errorMessage.includes("MongoClient") ||
-      errorMessage.includes("connection")
-    ) {
-      return NextResponse.json(
-        { error: "Meal plan not found" },
-        { status: 404 }
-      );
-    }
     logger.error(
       "Error fetching meal plan",
       error instanceof Error ? error : undefined,
@@ -87,7 +91,15 @@ export async function PUT(
 
     const updateData = { ...validationResult.data };
 
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("meal-plans/[id] PUT: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("meal-plans");
 
     const filter = /^[a-f0-9]{24}$/i.test(id)
@@ -126,7 +138,15 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const db = await getDatabase();
+    let db;
+    try {
+      db = await getDatabase();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("meal-plans/[id] DELETE: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
+
     const collection = db.collection("meal-plans");
 
     const filter = /^[a-f0-9]{24}$/i.test(id)
@@ -144,14 +164,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (
-      errorMessage.includes("MONGODB_URI") ||
-      errorMessage.includes("MongoClient") ||
-      errorMessage.includes("connection")
-    ) {
-      return NextResponse.json({ success: true });
-    }
     logger.error(
       "Error deleting meal plan",
       error instanceof Error ? error : undefined,

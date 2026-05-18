@@ -186,8 +186,8 @@ export const useStaffColumns = ({ staffMetrics, onView, onEdit, onDelete, onUpda
           return (
             <div className="flex items-center gap-3 h-full">
               <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <AvatarImage src={staff.avatar || ""} alt={staff.name} />
+                <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                   {getInitials(staff.name)}
                 </AvatarFallback>
               </Avatar>

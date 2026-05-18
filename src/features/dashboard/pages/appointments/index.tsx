@@ -449,24 +449,43 @@ export default function AppointmentCalendarPage() {
     refetchAppointments();
   };
   
-  // Calculate remaining sessions for each PT Package Record
+  // Calculate remaining sessions for each PT Package Record (prefer imported data)
   const ptPackageSessions = useMemo(() => {
     const packageSessions: Record<string, { total: number; used: number; remaining: number }> = {};
     
     ptPackageRecords.forEach((pkg: PTPackageRecord) => {
-      const completedAppointments = appointments.filter(
-        (apt: Appointment) => 
-          apt.ptPackageRecordId === pkg.id && 
-          apt.status === "COMPLETED"
-      );
-      
-      packageSessions[pkg.id] = {
-        total: pkg.ptPackageSessions,
-        used: completedAppointments.length,
-        remaining: Math.max(0, pkg.ptPackageSessions - completedAppointments.length)
-      };
+      const pkgId = pkg.id || (pkg as any)._id;
+      if (!pkgId) return;
+
+      const importedUsed = pkg.usedSessions;
+      const importedRemaining = pkg.remainingSessions;
+      const hasImported =
+        importedUsed != null &&
+        !isNaN(importedUsed) &&
+        importedUsed >= 0 &&
+        importedRemaining != null &&
+        !isNaN(importedRemaining) &&
+        importedRemaining >= 0;
+
+      if (hasImported) {
+        packageSessions[pkgId] = {
+          total: pkg.ptPackageSessions,
+          used: importedUsed,
+          remaining: importedRemaining,
+        };
+      } else {
+        const completedAppointments = appointments.filter(
+          (apt: Appointment) =>
+            apt.ptPackageRecordId === pkgId && apt.status === "COMPLETED"
+        );
+        packageSessions[pkgId] = {
+          total: pkg.ptPackageSessions,
+          used: completedAppointments.length,
+          remaining: Math.max(0, pkg.ptPackageSessions - completedAppointments.length),
+        };
+      }
     });
-    
+
     return packageSessions;
   }, [appointments, ptPackageRecords]);
   
@@ -474,8 +493,10 @@ export default function AppointmentCalendarPage() {
   const activePTPackages = useMemo(() => {
     const now = new Date();
     return ptPackageRecords.filter((pkg: PTPackageRecord) => {
+      const pkgId = pkg.id || (pkg as any)._id;
+      if (!pkgId) return false;
       const expiry = new Date(pkg.expiryDate);
-      const sessions = ptPackageSessions[pkg.id];
+      const sessions = ptPackageSessions[pkgId];
       return isAfter(expiry, now) && sessions && sessions.remaining > 0;
     });
   }, [ptPackageRecords, ptPackageSessions]);
@@ -533,6 +554,20 @@ export default function AppointmentCalendarPage() {
     }
   }, [newAppointment.startTime, newAppointment.endTime]);
 
+  // Auto-select current trainer when dialog opens and trainer data is available
+  useEffect(() => {
+    if (isAddAppointmentOpen && isPTorPTS && currentTrainerId && trainers.length > 0 && !newAppointment.trainerId) {
+      const matchedTrainer = trainers.find((t: any) => t.id === currentTrainerId);
+      if (matchedTrainer) {
+        setNewAppointment(prev => ({
+          ...prev,
+          trainerId: currentTrainerId,
+          trainer: matchedTrainer.name
+        }));
+      }
+    }
+  }, [isAddAppointmentOpen, isPTorPTS, currentTrainerId, trainers, newAppointment.trainerId]);
+
   // Periodic refresh for appointment status updates (every minute)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -547,15 +582,19 @@ export default function AppointmentCalendarPage() {
   const getAvailablePackages = (memberId: string) => {
     if (!memberId || memberId === "") return [];
     
-    // Find member by ID
-    const member = allMembers.find((c) => c.id === memberId);
+    // Find member by ID (with fallback for _id or memberNumber-based ID)
+    const member = allMembers.find((c) => {
+      const cId = c.id || (c as any)._id || `member-${c.memberNumber}`;
+      return cId === memberId;
+    });
     if (!member) return [];
     
     // Find PT Package Records for this member (by memberId or memberName)
     let memberPackages = activePTPackages.filter((pkg: PTPackageRecord) => {
-      // Match by member number or name
-      const matchesId = pkg.memberId === member.memberNumber;
-      const matchesName = pkg.memberName.toLowerCase() === member.fullName.toLowerCase();
+      // Match by member number (handle string/number type mismatch)
+      const matchesId = pkg.memberId != null && member.memberNumber != null && 
+        String(pkg.memberId).trim() === String(member.memberNumber).trim();
+      const matchesName = pkg.memberName?.toLowerCase() === member.fullName?.toLowerCase();
       return matchesId || matchesName;
     });
     
@@ -567,7 +606,8 @@ export default function AppointmentCalendarPage() {
     }
     
     return memberPackages.map((pkg: PTPackageRecord) => {
-      const sessions = ptPackageSessions[pkg.id] || { total: pkg.ptPackageSessions, used: 0, remaining: pkg.ptPackageSessions };
+      const pkgId = pkg.id || (pkg as any)._id;
+      const sessions = ptPackageSessions[pkgId] || { total: pkg.ptPackageSessions, used: 0, remaining: pkg.ptPackageSessions };
       return {
         id: pkg.id,
         packageId: pkg.invoiceNumber,
@@ -592,20 +632,21 @@ export default function AppointmentCalendarPage() {
       );
     }
     
-    // Get unique member IDs and Names from filtered PT packages
-    const activeMemberIds = new Set(filteredPackages.map((pkg) => pkg.memberId));
-    const activeMemberNames = new Set(filteredPackages.map((pkg) => pkg.memberName.toLowerCase()));
+    // Get unique member IDs and Names from filtered PT packages (normalize to strings for comparison)
+    const activeMemberIds = new Set(filteredPackages.map((pkg) => String(pkg.memberId).trim()));
+    const activeMemberNames = new Set(filteredPackages.map((pkg) => pkg.memberName?.toLowerCase().trim()));
     
     return allMembers
       .filter((member) => {
-         const hasIdMatch = member.memberNumber && activeMemberIds.has(member.memberNumber);
-         const hasNameMatch = activeMemberNames.has(member.fullName.toLowerCase());
+         const hasIdMatch = member.memberNumber && activeMemberIds.has(String(member.memberNumber).trim());
+         const hasNameMatch = member.fullName && activeMemberNames.has(member.fullName.toLowerCase().trim());
          return hasIdMatch || hasNameMatch;
       })
       .map((member) => ({
-        value: member.id,
+        value: member.id || (member as any)._id || `member-${member.memberNumber}`,
         label: member.fullName,
         fullName: member.fullName,
+        avatar: (member as { avatar?: string }).avatar || "",
         searchable: `${member.fullName} ${member.email || ""}`,
         disabled: false
       }));
@@ -627,7 +668,10 @@ export default function AppointmentCalendarPage() {
 
   // Handle member selection
   const handleMemberChange = (memberId: string) => {
-    const member = allMembers.find((c) => c.id === memberId);
+    const member = allMembers.find((c) => {
+      const cId = c.id || (c as any)._id || `member-${c.memberNumber}`;
+      return cId === memberId;
+    });
     setNewAppointment(prev => ({
       ...prev,
       selectedMember: memberId,
@@ -639,7 +683,10 @@ export default function AppointmentCalendarPage() {
 
   // Handle package selection
   const handlePackageChange = (packageRecordId: string) => {
-    const pkg = ptPackageRecords.find((p: PTPackageRecord) => p.id === packageRecordId);
+    const pkg = ptPackageRecords.find((p: PTPackageRecord) => {
+      const pId = p.id || (p as any)._id;
+      return pId === packageRecordId;
+    });
     
     // Auto-select trainer if package has assigned staff
     let autoSelectedTrainerId = "";
@@ -757,9 +804,13 @@ export default function AppointmentCalendarPage() {
       let packageSequenceNumber = 0;
 
       if (appointment.ptPackageRecordId) {
-        const ptPackage = ptPackageRecords.find((p: PTPackageRecord) => p.id === appointment.ptPackageRecordId);
+        const ptPackage = ptPackageRecords.find((p: PTPackageRecord) => {
+          const pId = p.id || (p as any)._id;
+          return pId === appointment.ptPackageRecordId;
+        });
         if (ptPackage) {
-          const sessions = ptPackageSessions[ptPackage.id] || {
+          const ptPkgId = ptPackage.id || (ptPackage as any)._id;
+          const sessions = ptPackageSessions[ptPkgId] || {
             total: ptPackage.ptPackageSessions,
             used: 0,
             remaining: ptPackage.ptPackageSessions
@@ -769,7 +820,7 @@ export default function AppointmentCalendarPage() {
           // based on chronological order, but ONLY counting COMPLETED appointments.
           // Cancelled appointments don't count towards the sequence number.
           const relatedAppointments = appointments
-            .filter((apt: Appointment) => apt.ptPackageRecordId === ptPackage.id)
+            .filter((apt: Appointment) => apt.ptPackageRecordId === ptPkgId)
             .sort((a: Appointment, b: Appointment) => {
               const aDate = new Date(a.date).getTime();
               const bDate = new Date(b.date).getTime();
@@ -897,19 +948,26 @@ export default function AppointmentCalendarPage() {
 
     try {
       // Get member info
-      const member = allMembers.find((c) => c.id === newAppointment.selectedMember);
+      const member = allMembers.find((c) => {
+        const cId = c.id || (c as any)._id || `member-${c.memberNumber}`;
+        return cId === newAppointment.selectedMember;
+      });
       if (!member) {
         throw new Error("Member not found");
       }
       
       // Get PT Package Record
-      const ptPackage = ptPackageRecords.find((p: PTPackageRecord) => p.id === newAppointment.selectedPackage);
+      const ptPackage = ptPackageRecords.find((p: PTPackageRecord) => {
+        const pId = p.id || (p as any)._id;
+        return pId === newAppointment.selectedPackage;
+      });
       if (!ptPackage) {
         throw new Error("PT Package not found");
       }
       
       // Check if package has remaining sessions
-      const sessions = ptPackageSessions[ptPackage.id];
+      const pkgId = ptPackage.id || (ptPackage as any)._id;
+      const sessions = ptPackageSessions[pkgId];
       if (!sessions || sessions.remaining <= 0) {
         throw new Error("No remaining sessions in this package");
       }
@@ -1259,7 +1317,7 @@ export default function AppointmentCalendarPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">APPOINTMENTS</h1>
+          <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">APPOINTMENTS</h1>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -1292,7 +1350,7 @@ export default function AppointmentCalendarPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-black italic tracking-tight uppercase font-montserrat">APPOINTMENTS</h1>
+          <h1 className="text-3xl font-black tracking-tight uppercase font-montserrat">APPOINTMENTS</h1>
         </div>
         <div className="flex items-center gap-4">
           {/* View Tabs */}
@@ -1336,12 +1394,15 @@ export default function AppointmentCalendarPage() {
               });
             }
           }}>
-            <DialogContent className="max-w-[720px] w-full h-[650px] p-0 overflow-hidden flex flex-col">
-              <DialogHeader className="px-6 py-4 border-b">
+            <DialogContent 
+              className="max-w-[720px] w-full max-h-[90vh] min-h-[400px] h-[min(650px,90vh)] p-0 overflow-hidden flex flex-col"
+              onInteractOutside={(e) => e.preventDefault()}
+            >
+              <DialogHeader className="px-4 py-4 sm:px-6 border-b">
                 <DialogTitle className="text-xl font-semibold">New Appointment</DialogTitle>
               </DialogHeader>
 
-              <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-6 md:gap-y-5 auto-rows-fr">
                   {/* Member */}
                   <div className="flex flex-col gap-2 h-full">
@@ -1354,8 +1415,8 @@ export default function AppointmentCalendarPage() {
                             return selectedMember ? (
                               <>
                                 <Avatar className="absolute left-3 top-1/2 -translate-y-1/2 h-7 w-7 shrink-0 border-2 border-background shadow-sm">
-                                  <AvatarImage src="" />
-                                  <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                  <AvatarImage src={selectedMember.avatar || ""} alt={selectedMember.fullName} />
+                                  <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                                     {getInitials(selectedMember.fullName)}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1364,14 +1425,14 @@ export default function AppointmentCalendarPage() {
                             ) : (
                               <>
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder={loadingMembers ? "Loading members..." : "Select a member"} />
+                            <SelectValue placeholder={loadingMembers ? "Loading..." : "Member"} />
                               </>
                             );
                           })()
                         ) : (
                           <>
                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder={loadingMembers ? "Loading members..." : "Select a member"} />
+                            <SelectValue placeholder={loadingMembers ? "Loading..." : "Member"} />
                           </>
                         )}
                         </SelectTrigger>
@@ -1408,21 +1469,19 @@ export default function AppointmentCalendarPage() {
                             );
                             if (!selectedPackage) {
                               return (
-                                <SelectValue placeholder="Select package" />
+                                <SelectValue placeholder="Package" />
                               );
                             }
                             const balance = selectedPackage.sessionsRemaining || 0;
                             return (
                               <div className="flex items-center justify-between gap-2 w-full min-w-0 pr-1">
                                 <span
-                                  className="uppercase italic font-black text-xs leading-tight tracking-tight text-foreground truncate flex-1 min-w-0"
-                                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                  className="uppercase font-black text-xs leading-tight tracking-tight text-foreground truncate flex-1 min-w-0 font-montserrat"
                                 >
                                   {selectedPackage.ptPackageName}
                                 </span>
                                 <span
-                                  className="font-black italic text-xs tracking-tight text-foreground shrink-0"
-                                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                  className="font-black text-xs tracking-tight text-foreground shrink-0 font-montserrat"
                                 >
                                   {balance}
                                 </span>
@@ -1430,7 +1489,7 @@ export default function AppointmentCalendarPage() {
                             );
                           })()
                         ) : (
-                          <SelectValue placeholder="Select package" />
+                          <SelectValue placeholder="Package" />
                         )}
                         </SelectTrigger>
                         <SelectContent className="max-h-[200px]">
@@ -1448,8 +1507,7 @@ export default function AppointmentCalendarPage() {
                                   <div className="flex items-center gap-2 w-full min-w-0 pr-6">
                                     <div className="flex flex-col gap-[1px] min-w-0 flex-1">
                                       <span
-                                        className="uppercase italic font-black text-xs leading-tight tracking-tight text-foreground truncate"
-                                        style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                        className="uppercase font-black text-xs leading-tight tracking-tight text-foreground truncate font-montserrat"
                                       >
                                         {pkg.ptPackageName}
                                       </span>
@@ -1459,8 +1517,7 @@ export default function AppointmentCalendarPage() {
                                     </div>
                                   </div>
                                   <span
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 font-black italic text-xs tracking-tight text-foreground"
-                                    style={{ fontFamily: 'Montserrat, sans-serif' }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 font-black text-xs tracking-tight text-foreground font-montserrat"
                                   >
                                     {balance}
                                   </span>
@@ -1483,30 +1540,34 @@ export default function AppointmentCalendarPage() {
                       <SelectTrigger className={`relative h-11 w-full border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-full ${newAppointment.trainerId ? 'pl-14' : 'pl-10'} ${isPTorPTS ? 'opacity-60 cursor-not-allowed' : ''}`}>
                         {newAppointment.trainerId ? (
                           (() => {
-                            const selectedTrainer = getActiveTrainers().find((t: any) => t.value === newAppointment.trainerId);
-                            return selectedTrainer ? (
+                            // Search all trainers (not just active) so PT/PTS users always see their name
+                            const selectedTrainer = getActiveTrainers().find((t: any) => t.value === newAppointment.trainerId)
+                              || trainers.find((t: any) => t.id === newAppointment.trainerId);
+                            const trainerName = selectedTrainer?.name || (selectedTrainer as any)?.label || newAppointment.trainer;
+                            const trainerAvatar = selectedTrainer?.avatar || "";
+                            return trainerName ? (
                               <>
                                 <Avatar className="absolute left-3 top-1/2 -translate-y-1/2 h-7 w-7 shrink-0 border-2 border-background shadow-sm">
-                                  <AvatarImage src={selectedTrainer.avatar} alt={selectedTrainer.name} />
-                                  <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                                    {getInitials(selectedTrainer.name)}
+                                  <AvatarImage src={trainerAvatar} alt={trainerName} />
+                                  <AvatarFallback className="text-xs font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
+                                    {getInitials(trainerName)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="pl-2 text-sm text-foreground truncate">
-                                  {selectedTrainer.name}
+                                  {trainerName}
                                 </span>
                               </>
                             ) : (
                               <>
                                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <SelectValue placeholder={loadingTrainers ? "Loading trainers..." : "Select a trainer"} />
+                                <SelectValue placeholder={loadingTrainers ? "Loading..." : "Trainer"} />
                               </>
                             );
                           })()
                         ) : (
                           <>
                             <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder={loadingTrainers ? "Loading trainers..." : "Select a trainer"} />
+                            <SelectValue placeholder={loadingTrainers ? "Loading..." : "Trainer"} />
                           </>
                         )}
                         </SelectTrigger>
@@ -1538,7 +1599,7 @@ export default function AppointmentCalendarPage() {
                           </Button>
                           </div>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                           <Calendar
                             mode="single"
                             selected={newAppointment.date}
@@ -1558,7 +1619,7 @@ export default function AppointmentCalendarPage() {
                           type="text"
                           value={newAppointment.startTime}
                           onChange={(e) => handleStartTimeChange(e.target.value)}
-                          placeholder="HH:MM (e.g., 10:00)"
+                          placeholder="HH:MM"
                           className="h-11 w-full pl-10 pr-16 border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-full"
                         />
                         {newAppointment.startTime && (
@@ -1594,7 +1655,7 @@ export default function AppointmentCalendarPage() {
                       <Select value={newAppointment.location} onValueChange={(value) => setNewAppointment({ ...newAppointment, location: value })}>
                       <SelectTrigger className="relative h-11 w-full border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-full pl-10">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="Select location" />
+                        <SelectValue placeholder="Location" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="BKK 1">BKK 1</SelectItem>
@@ -1611,7 +1672,7 @@ export default function AppointmentCalendarPage() {
                           value={newAppointment.description}
                           onChange={(e) => setNewAppointment({ ...newAppointment, description: e.target.value })}
                           className="min-h-[44px] h-11 w-full pl-10 resize-none border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-2xl"
-                          placeholder="Add notes..."
+                          placeholder="Notes..."
                         />
                     </div>
                   </div>
@@ -1661,7 +1722,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {appointmentStats.todaysAppointments}
                 </div>
               </div>
@@ -1680,7 +1741,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {appointmentStats.cancellations}
                 </div>
               </div>
@@ -1700,7 +1761,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {appointmentStats.upcoming}
                 </div>
               </div>
@@ -1720,7 +1781,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">
                   {appointmentStats.totalSessions}
                 </div>
               </div>
@@ -1744,7 +1805,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{sessionStats.total}</div>
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{sessionStats.total}</div>
               </div>
             </CardContent>
           </Card>
@@ -1760,7 +1821,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{sessionStats.booked}</div>
+                <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{sessionStats.booked}</div>
               </div>
             </CardContent>
           </Card>
@@ -1776,7 +1837,7 @@ export default function AppointmentCalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
-                <div className="text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 font-mono">{sessionStats.available}</div>
+                <div className="text-2xl font-bold tracking-tight text-green-600 dark:text-green-400 font-mono tabular-nums">{sessionStats.available}</div>
               </div>
             </CardContent>
           </Card>
@@ -1791,14 +1852,14 @@ export default function AppointmentCalendarPage() {
                       {trainersWorkingToday.slice(0, 3).map((trainer: any) => (
                         <Avatar key={trainer.id} className="w-8 h-8 border-2 border-background shadow-sm">
                           <AvatarImage src={trainer.avatar || ""} />
-                          <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                          <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                             {getInitials(trainer.name)}
                           </AvatarFallback>
                         </Avatar>
                       ))}
                       {trainersWorkingToday.length > 3 && (
                         <Avatar className="w-8 h-8 border-2 border-background shadow-sm">
-                          <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/60 text-muted-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                          <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/60 text-muted-foreground font-montserrat">
                             +{trainersWorkingToday.length - 3}
                           </AvatarFallback>
                         </Avatar>
@@ -1809,7 +1870,7 @@ export default function AppointmentCalendarPage() {
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10 shadow-sm">
                       <AvatarImage src={selectedTrainerStats?.avatar || ""} />
-                      <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      <AvatarFallback className="text-sm font-black bg-gradient-to-br from-muted to-muted/80 text-foreground font-montserrat">
                         {getInitials(trainerFilter)}
                       </AvatarFallback>
                     </Avatar>
@@ -1845,7 +1906,7 @@ export default function AppointmentCalendarPage() {
             <CardContent>
               <div className="h-[40px] flex items-center justify-center">
                 {trainerFilter === "all" ? (
-                  <div className="text-2xl font-bold tracking-tight text-foreground font-mono">{trainersWorkingToday.length}</div>
+                  <div className="text-2xl font-bold tracking-tight text-foreground font-mono tabular-nums">{trainersWorkingToday.length}</div>
                 ) : (
                   <div className="flex items-center justify-center gap-6 text-xs font-medium text-muted-foreground">
                     <span className="font-mono font-bold">Today: {selectedTrainerStats?.todaysSessions || 0}</span>
@@ -1930,7 +1991,7 @@ export default function AppointmentCalendarPage() {
                                 </div>
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                   <Dumbbell className="h-3 w-3" />
-                                  <span className="font-black italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                  <span className="font-black font-montserrat">
                                     {session.sessionType}
                                   </span>
                                 </div>
@@ -2089,7 +2150,7 @@ export default function AppointmentCalendarPage() {
                                       </div>
                                       
                                       <div className="font-medium text-xs truncate pr-1">{session.client}</div>
-                                      <div className="text-xs text-muted-foreground truncate font-black italic" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                      <div className="text-xs text-muted-foreground truncate font-black font-montserrat">
                                         {session.sessionType}
                                       </div>
                                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -2258,7 +2319,7 @@ export default function AppointmentCalendarPage() {
               </div>
 
               {/* Session Information Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div>
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Time</div>
@@ -2288,7 +2349,7 @@ export default function AppointmentCalendarPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Package</div>
-                    <div className="text-sm font-black italic text-foreground" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                    <div className="text-sm font-black text-foreground font-montserrat">
                       {selectedAppointment.packageType}
                     </div>
                   </div>
@@ -2490,7 +2551,7 @@ export default function AppointmentCalendarPage() {
 
               {/* New Date & Time (only for CHANGE_DATE) */}
               {editRequest.requestType === "CHANGE_DATE" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-2">
                     <Label className="text-sm font-medium text-muted-foreground">New Date</Label>
                     <Popover>
@@ -2503,7 +2564,7 @@ export default function AppointmentCalendarPage() {
                           {format(editRequest.newDate, "PPP")}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                         <Calendar
                           mode="single"
                           selected={editRequest.newDate}
@@ -2548,7 +2609,7 @@ export default function AppointmentCalendarPage() {
                 <Textarea
                   value={editRequest.reason}
                   onChange={(e) => setEditRequest({ ...editRequest, reason: e.target.value })}
-                  placeholder="Please explain why you need this change..."
+                  placeholder="Reason..."
                   className="min-h-[100px] resize-none border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-2xl"
                 />
               </div>
@@ -2559,7 +2620,7 @@ export default function AppointmentCalendarPage() {
                 <Textarea
                   value={editRequest.additionalNotes}
                   onChange={(e) => setEditRequest({ ...editRequest, additionalNotes: e.target.value })}
-                  placeholder="Any additional information..."
+                  placeholder="Additional info..."
                   className="min-h-[80px] resize-none border-2 border-border/20 bg-background hover:border-primary/50 transition-all duration-200 focus-visible:ring-0 focus-visible:border-primary rounded-2xl"
                 />
               </div>

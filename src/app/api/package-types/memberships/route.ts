@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { Membership } from "@/features/dashboard/pages/memberships/types/membership";
-import { mockMemberships } from "@/features/dashboard/pages/memberships/data/mock-memberships";
 import { logger } from "@/lib/logger";
 import { membershipTypeSchema } from "@/lib/validations/membership-type";
+
+function dbUnavailable() {
+  return NextResponse.json(
+    { error: "Database unavailable. Please try again shortly." },
+    { status: 503 }
+  );
+}
 
 interface MembershipQuery {
   search?: string;
@@ -12,77 +18,48 @@ interface MembershipQuery {
 
 export async function GET(request: NextRequest) {
   try {
-    let memberships: Membership[] = [];
-
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("membership-types");
-
-      const searchParams = request.nextUrl.searchParams;
-      const search = searchParams.get("search");
-      const status = searchParams.get("status");
-
-      const query: MembershipQuery = {};
-      if (status && status !== "all") {
-        query.status = status;
-      }
-
-      memberships = await collection.find(query as any).sort({ duration: 1 }).toArray() as unknown as Membership[];
-
-      // Apply search filter if provided
-      if (search) {
-        const searchLower = search.toLowerCase();
-        memberships = memberships.filter((membership) => {
-          const searchableFields = [
-            membership.name,
-            membership.shortName,
-            membership.description || "",
-            membership.type,
-          ].map((field) => field.toLowerCase());
-
-          return searchableFields.some((field) => field.includes(searchLower));
-        });
-      }
-
-      // Apply status filter
-      if (status === "active") {
-        memberships = memberships.filter((membership) => membership.isActive);
-      } else if (status === "inactive") {
-        memberships = memberships.filter((membership) => !membership.isActive);
-      }
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        logger.info("Using mock memberships data (MongoDB not configured)");
-        memberships = [...mockMemberships];
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("package-types/memberships GET: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
+    }
 
-        // Apply filters to mock data
-        const searchParams = request.nextUrl.searchParams;
-        const search = searchParams.get("search");
-        const status = searchParams.get("status");
+    const collection = db.collection("membership-types");
 
-        if (status === "active") {
-          memberships = memberships.filter((m) => m.isActive);
-        } else if (status === "inactive") {
-          memberships = memberships.filter((m) => !m.isActive);
-        }
+    const searchParams = request.nextUrl.searchParams;
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
 
-        if (search) {
-          const searchLower = search.toLowerCase();
-          memberships = memberships.filter((membership) => {
-            const searchableFields = [
-              membership.name,
-              membership.shortName,
-              membership.description || "",
-              membership.type,
-            ].map((field) => field.toLowerCase());
+    const query: MembershipQuery = {};
+    if (status && status !== "all") {
+      query.status = status;
+    }
 
-            return searchableFields.some((field) => field.includes(searchLower));
-          });
-        }
-      } else {
-        throw error;
-      }
+    let memberships = await collection.find(query as any).sort({ duration: 1 }).toArray() as unknown as Membership[];
+
+    // Apply search filter if provided
+    if (search) {
+      const searchLower = search.toLowerCase();
+      memberships = memberships.filter((membership) => {
+        const searchableFields = [
+          membership.name,
+          membership.shortName,
+          membership.description || "",
+          membership.type,
+        ].map((field) => field.toLowerCase());
+
+        return searchableFields.some((field) => field.includes(searchLower));
+      });
+    }
+
+    // Apply status filter
+    if (status === "active") {
+      memberships = memberships.filter((membership) => membership.isActive);
+    } else if (status === "inactive") {
+      memberships = memberships.filter((membership) => !membership.isActive);
     }
 
     return NextResponse.json(memberships);
@@ -126,31 +103,26 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
+    let db;
     try {
-      const db = await getDatabase();
-      const collection = db.collection("membership-types");
-      const membershipWithId: Membership = {
-        id: `m${Date.now()}`,
-        ...membership,
-      };
-      const result = await collection.insertOne(membershipWithId as any);
-      const createdMembership: Membership = {
-        ...membershipWithId,
-        id: result.insertedId.toString(),
-      };
-      return NextResponse.json(createdMembership, { status: 201 });
+      db = await getDatabase();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("MONGODB_URI")) {
-        logger.info("Using mock mode for membership creation");
-        const mockMembership: Membership = {
-          id: `m${Date.now()}`,
-          ...membership,
-        };
-        return NextResponse.json(mockMembership, { status: 201 });
-      }
-      throw error;
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("package-types/memberships POST: database unavailable", undefined, { message: msg });
+      return dbUnavailable();
     }
+
+    const collection = db.collection("membership-types");
+    const membershipWithId: Membership = {
+      id: `m${Date.now()}`,
+      ...membership,
+    };
+    const result = await collection.insertOne(membershipWithId as any);
+    const createdMembership: Membership = {
+      ...membershipWithId,
+      id: result.insertedId.toString(),
+    };
+    return NextResponse.json(createdMembership, { status: 201 });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error : new Error(String(error));
     logger.error(
@@ -167,4 +139,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

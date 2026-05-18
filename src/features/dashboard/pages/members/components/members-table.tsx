@@ -37,6 +37,7 @@ interface MembersTableProps {
   onEdit?: (member: Member) => void;
   ptPackageRecords?: PTPackageRecord[];
   appointments?: Appointment[];
+  detailBasePath?: string;
 }
 
 export function MembersTable({
@@ -50,9 +51,10 @@ export function MembersTable({
   onEdit,
   ptPackageRecords,
   appointments,
+  detailBasePath = "/dashboard/members",
 }: MembersTableProps) {
   const router = useRouter();
-  const columns = useMemberColumns({ onEdit, ptPackageRecords, appointments });
+  const columns = useMemberColumns({ onEdit, ptPackageRecords, appointments, detailBasePath });
 
   const table = useReactTable({
     data: members,
@@ -92,7 +94,7 @@ export function MembersTable({
                 onClick={() => {
                   const member = row.original;
                   if (member.memberNumber) {
-                    router.push(`/dashboard/members/${member.memberNumber}`);
+                    router.push(`${detailBasePath}/${member.memberNumber}`);
                   }
                 }}
               >
